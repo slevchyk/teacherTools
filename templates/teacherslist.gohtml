@@ -1,0 +1,33 @@
+
+
+<div class="container">
+    <div class="row">
+        <table class="table table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th scope="col">id</th>
+                <th scope="col">first name uuid</th>
+                <th scope="col">last name</th>
+                <th scope="col">last activity</th>
+                <th scope="col">ip</th>
+                <th scope="col">user agent</th>
+            </tr>
+            </thead>
+
+        {{if .}}
+        {{range .}}
+            <tr>
+                <td>{{.Number}}</td>
+                <td>{{.Session.UUID}}</td>
+                <td>{{.Session.UserID}}</td>
+                <td>{{.Session.LastActivity}}</td>
+                <td>{{.Session.IP}}</td>
+                <td>{{.Session.UserAgent}}</td>
+            </tr>
+        {{end}}
+        {{end}}
+
+        </table>
+    </div>
+</div>
+
