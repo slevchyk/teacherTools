@@ -20,7 +20,7 @@
                     <tr>
                         <td>{{.Number}}</td>
                         <td>{{.Session.UUID}}</td>
-                        <td>{{.Session.UserID}}</td>
+                        <td><a href="/user?action=view&id={{.Session.UserID}}" class="btn btn-link">{{.Session.UserID}}</a></td>
                         <td>{{.Session.LastActivity}}</td>
                         <td>{{.Session.IP}}</td>
                         <td>{{.Session.UserAgent}}</td>

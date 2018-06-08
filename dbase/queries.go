@@ -1,26 +1,27 @@
 package dbase
 
 const (
-	SelectUserBySessionID      = 1001
-	SelectUserByEmail          = 1002
-	SelectSessions             = 1003
-	SelectTeacherByUserID      = 1004
-	SelectStudentsByTeacher    = 1005
-	SelectLevels               = 1006
-	InsertUser                 = 2001
-	InsertSession              = 2002
-	InsertTeacher              = 2003
-	UpdateSessionsLastActivity = 3001
-	DeleteSessionByID        = 4001
-	DeleteSessionByUUID        = 4002
+	S_UserBySessionID      = "SelectUserBySessionID"
+	S_UserByEmail          = "SelectUserByEmail"
+	S_UserByID             = "SelectUserByID"
+	S_Sessions             = "SelectSessions"
+	S_TeacherByUserID      = "SelectTeacherByUserID"
+	S_StudentsByTeacher    = "SelectStudentsByTeacher"
+	S_Levels               = "SelectLevels"
+	I_User                 = "InsertUser"
+	I_Session              = "InsertSession"
+	I_Teacher              = "InsertTeacher"
+	U_SessionsLastActivity = "UpdateSessionsLastActivity"
+	D_SessionByID          = "DeleteSessionByID"
+	D_SessionByUUID        = "DeleteSessionByUUID"
 )
 
-func GetQuery(QryID int) string {
+func GetQuery(QryID string) string {
 
 	var result string
 
 	switch QryID {
-	case SelectUserByEmail:
+	case S_UserByEmail:
 		result = `
 			select
 				u.id,
@@ -32,7 +33,18 @@ func GetQuery(QryID int) string {
 			from users u
 			where
 				u.email = $1;`
-	case SelectUserBySessionID:
+	case S_UserByID:
+		result = `
+			select
+				u.id,
+				u.email,				
+				u.firstname,
+				u.lastname,
+				u.type
+			from users u
+			where
+				u.id = $1;`
+	case S_UserBySessionID:
 		result = `
 			select 
   				u.id,
@@ -44,7 +56,7 @@ func GetQuery(QryID int) string {
 					on s.userid = u.id
 			where
 				s.uuid = $1;`
-	case SelectSessions:
+	case S_Sessions:
 		result = `
 			select
 				s.id,
@@ -54,7 +66,7 @@ func GetQuery(QryID int) string {
 				s.ip,
 				s.useragent
 			from sessions s;`
-	case SelectTeacherByUserID:
+	case S_TeacherByUserID:
 		result = `
 			select
 				t.id,
@@ -62,7 +74,7 @@ func GetQuery(QryID int) string {
 			from teachers t
 			where
 				t.userid = $1;`
-	case SelectStudentsByTeacher:
+	case S_StudentsByTeacher:
 		result = `
 			select
 				s.id,
@@ -71,14 +83,14 @@ func GetQuery(QryID int) string {
 			from students s
 			where
 				s.teacherid = $1;`
-	case SelectLevels:
+	case S_Levels:
 		result = `
 			select
 				l.id,
 				l.name,
 				l.score
 			from levels l;`
-	case InsertUser:
+	case I_User:
 		result = `
 			insert into users
 				(email,
@@ -87,7 +99,7 @@ func GetQuery(QryID int) string {
    				lastname,
    				type)
 			values ($1, $2, $3, $4, $5);`
-	case InsertSession:
+	case I_Session:
 		result = `
 			insert into sessions
 				(uuid,
@@ -96,24 +108,24 @@ func GetQuery(QryID int) string {
 				ip,
 				useragent)
 			values ($1, $2, $3, $4, $5);`
-	case InsertTeacher:
+	case I_Teacher:
 		result = `
 			insert into teachers
 				(userid,
    				levelid)
 			values ($1, $2);`
-	case UpdateSessionsLastActivity:
+	case U_SessionsLastActivity:
 		result = `
 			update sessions
 
 			with`
-	case DeleteSessionByID:
+	case D_SessionByID:
 		result = `
 			delete				
 			from sessions s
 			where
 				s.id = $1;`
-	case DeleteSessionByUUID:
+	case D_SessionByUUID:
 		result = `
 			delete				
 			from sessions s

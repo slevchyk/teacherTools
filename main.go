@@ -3,10 +3,10 @@ package main
 import (
 	"./cfg"
 	"./models"
+	"./dbase"
 	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/satori/go.uuid"
-	"github.com/slevchyk/personalCoach/dbase"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
@@ -93,7 +93,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 
 		//check user
-		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.SelectUserByEmail), email)
+		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), email)
 		if err != nil {
 			panic(err)
 		}
@@ -132,7 +132,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		s.IP = r.RemoteAddr
 		s.UserAgent = r.Header.Get("User-Agent")
 
-		_, err = cfg.DB.Query(dbase.GetQuery(dbase.InsertSession), s.UUID, u.ID, s.LastActivity, s.IP, s.UserAgent)
+		_, err = cfg.DB.Query(dbase.GetQuery(dbase.I_Session), s.UUID, u.ID, s.LastActivity, s.IP, s.UserAgent)
 		if err != nil {
 			panic(err)
 		}
@@ -157,7 +157,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionID := c.Value
-	_, err = cfg.DB.Query(dbase.GetQuery(dbase.DeleteSessionByUUID), sessionID)
+	_, err = cfg.DB.Query(dbase.GetQuery(dbase.D_SessionByUUID), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -181,7 +181,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		firstName := r.FormValue("firstName")
 		lastName := r.FormValue("lastName")
 
-		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.SelectUserByEmail), userName)
+		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), userName)
 		if err != nil {
 			panic(err)
 		}
@@ -205,12 +205,12 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = cfg.DB.Query(dbase.GetQuery(dbase.InsertUser), userName, encryptedPassword, firstName, lastName, false)
+		_, err = cfg.DB.Query(dbase.GetQuery(dbase.I_User), userName, encryptedPassword, firstName, lastName, false)
 		if err != nil {
 			panic(err)
 		}
 
-		rows, err = cfg.DB.Query(dbase.GetQuery(dbase.SelectUserByEmail), userName)
+		rows, err = cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), userName)
 		if err != nil {
 			panic(err)
 		}
@@ -221,7 +221,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if userID != 0 {
-			cfg.DB.Query(dbase.GetQuery(dbase.InsertSession), sessionID.String(), userID, time.Now(), r.Header.Get("X-Forwarded-For"))
+			cfg.DB.Query(dbase.GetQuery(dbase.I_Session), sessionID.String(), userID, time.Now(), r.Header.Get("X-Forwarded-For"))
 		}
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -372,7 +372,7 @@ func initDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.SelectUserByEmail), "admin")
+	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), "admin")
 	if err != nil {
 		panic(err)
 	}
@@ -380,7 +380,7 @@ func initDb(w http.ResponseWriter, r *http.Request) {
 
 	if !rows.Next() {
 		encryptedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.MinCost)
-		_, err = cfg.DB.Exec(dbase.GetQuery(dbase.InsertUser), "admin@domain.com", encryptedPassword, "Root", "User", "admin")
+		_, err = cfg.DB.Exec(dbase.GetQuery(dbase.I_User), "admin@domain.com", encryptedPassword, "Root", "User", "admin")
 		fmt.Println(err)
 	}
 
@@ -421,7 +421,7 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		_, err = cfg.DB.Query(dbase.GetQuery(dbase.DeleteSessionByID), id)
+		_, err = cfg.DB.Query(dbase.GetQuery(dbase.D_SessionByID), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -429,7 +429,7 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/sessions", http.StatusSeeOther)
 	}
 
-	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.SelectSessions))
+	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_Sessions))
 	if err != nil {
 		panic(err)
 	}
@@ -461,7 +461,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 	var u models.Users
 	var t models.Teachers
 
-	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.SelectLevels))
+	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_Levels))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -484,7 +484,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 		u.FirstName = r.FormValue("firstName")
 		u.LastName = r.FormValue("lastName")
 
-		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.SelectUserByEmail), u.Email)
+		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
 		if err != nil {
 			panic(err)
 		}
@@ -503,13 +503,13 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		u.Password = encryptedPassword
 
-		_, err = cfg.DB.Query(dbase.GetQuery(dbase.InsertUser), u.Email, u.Password, u.FirstName, u.LastName, "teacher")
+		_, err = cfg.DB.Query(dbase.GetQuery(dbase.I_User), u.Email, u.Password, u.FirstName, u.LastName, "teacher")
 		if err != nil {
 			http.Error(w, "Can't create user", http.StatusInternalServerError)
 			return
 		}
 
-		rows, err = cfg.DB.Query(dbase.GetQuery(dbase.SelectUserByEmail), u.Email)
+		rows, err = cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
 		if err != nil {
 			http.Error(w, "Can't select user", http.StatusInternalServerError)
 		}
@@ -523,7 +523,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 			t.UserID = u.ID
 			t.LevelID = l.ID
 
-			_, err = cfg.DB.Query(dbase.GetQuery(dbase.InsertTeacher), t.UserID, t.LevelID)
+			_, err = cfg.DB.Query(dbase.GetQuery(dbase.I_Teacher), t.UserID, t.LevelID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -536,6 +536,40 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 	cfg.Tpl.ExecuteTemplate(w, "editteacher.gohtml", sl)
 }
 
-func userHandler(w http.ResponseWriter)  {
-	
+func userHandler(w http.ResponseWriter, r *http.Request)  {
+
+	type tplData struct{
+		View bool
+		User models.Users
+	}
+
+	var action string
+	var td tplData
+
+	td.View = false
+
+	action = r.FormValue("action")
+	if action == "view" {
+
+		var u models.Users
+
+		id, err := strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserByID), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		if rows.Next() {
+			rows.Scan(&u.ID, &u.Email, &u.FirstName, &u.LastName, &u.Type)
+		}
+
+		td.View = true
+		td.User = u
+	}
+
+	cfg.Tpl.ExecuteTemplate(w, "user.gohtml", td)
 }

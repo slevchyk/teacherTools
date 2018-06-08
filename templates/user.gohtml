@@ -1,4 +1,4 @@
-{{ define "teacher"}}
+{{ template "header"}}
 
 <div class="container">
     <div class="row">
@@ -8,21 +8,25 @@
                     <!-- form card create teacher -->
                     <div class="card rounded-0 shadow">
                         <div class="card-header">
-                            <h3 class="mb-0">User</h3>
+                            <h3 class="mb-0">User {{if .View}}ID={{.User.ID}}{{end}}</h3>
                         </div>
                         <div class="card-body">
                             <form class="form" role="form" method="POST">
                                 <div class="form-group">
                                     <label for="firstName">First name</label>
-                                    <input type="text" class="form-control" id="firstName" required="" placeholder="first name..." name="firstName">
+                                    <input type="text" class="form-control" id="firstName" required="" placeholder="first name..." name="firstName" {{if .View}}value="{{.User.FirstName}}"{{end}}>
                                 </div>
                                 <div class="form-group">
                                     <label for="lastName">Last name</label>
-                                    <input type="text" class="form-control" id="lastName" required="" placeholder="last name..." name="lastName">
+                                    <input type="text" class="form-control" id="lastName" required="" placeholder="last name..." name="lastName" {{if .View}}value="{{.User.LastName}}"{{end}}>
                                 </div>
                                 <div class="form-group">
                                     <label for="email">Email</label>
-                                    <input type="email" class="form-control" id="email" required="" placeholder="email address..." name="email">
+                                    <input type="email" class="form-control" id="email" required="" placeholder="email address..." name="email" {{if .View}}value="{{.User.Email}}"{{end}}>
+                                </div>
+                                <div class="form-group">
+                                    <label for="type">Type</label>
+                                    <input type="text" class="form-control" id="type" readonly {{if .View}}value="{{.User.Type}}"{{end}}>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-lg float-right shadow" id="btnCreate"><i class="fa fa-save"></i> Save</button>
                             </form>
@@ -41,4 +45,4 @@
 </div>
 <!--/container-->
 
-{{end}}
+{{ template "footer" }}
