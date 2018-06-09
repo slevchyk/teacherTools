@@ -2,9 +2,9 @@
 
 <div class="container">
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-sm-12 col-md-12">
             <div class="row">
-                <div class="col-md-6 mx-auto">
+                <div class="col-sm-12 col-md-6 mx-auto">
                     <!-- form card create teacher -->
                     <div class="card rounded-0 shadow">
                         <div class="card-header">
@@ -12,6 +12,10 @@
                         </div>
                         <div class="card-body">
                             <form class="form" role="form" method="POST">
+                                <div class="form-group">
+                                    {{if .View}}<img src="public/userpics/{{.User.Userpic}}" class="userpic float-left" alt="user picture">{{end}}
+                                    <input type="file" name="userpic">
+                                </div>
                                 <div class="form-group">
                                     <label for="firstName">First name</label>
                                     <input type="text" class="form-control" id="firstName" required="" placeholder="first name..." name="firstName" {{if .View}}value="{{.User.FirstName}}"{{end}}>

@@ -29,10 +29,7 @@ func getUser(w http.ResponseWriter, r *http.Request) models.Users {
 	defer rows.Close()
 
 	if rows.Next() {
-		err = rows.Scan(&u.ID, &u.FirstName, &u.LastName, &u.Type)
-		if err != nil {
-			panic(err)
-		}
+		scanUser(rows, &u)
 	}
 
 	return u

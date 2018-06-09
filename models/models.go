@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Users struct {
 	ID        int
@@ -9,6 +11,7 @@ type Users struct {
 	FirstName string
 	LastName  string
 	Type      string
+	Userpic   string
 }
 
 type Sessions struct {

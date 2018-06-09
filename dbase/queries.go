@@ -29,7 +29,8 @@ func GetQuery(QryID string) string {
 				u.password,
 				u.firstname,
 				u.lastname,
-				u.type
+				u.type,
+				u.userpic
 			from users u
 			where
 				u.email = $1;`
@@ -37,10 +38,12 @@ func GetQuery(QryID string) string {
 		result = `
 			select
 				u.id,
-				u.email,				
+				u.email,
+				u.password,
 				u.firstname,
 				u.lastname,
-				u.type
+				u.type,
+				u.userpic
 			from users u
 			where
 				u.id = $1;`
@@ -48,9 +51,12 @@ func GetQuery(QryID string) string {
 		result = `
 			select 
   				u.id,
-  				u.firstname,
-  				u.lastname,
-  				u.type
+				u.email,
+				u.password,
+				u.firstname,
+				u.lastname,
+				u.type,
+				u.userpic
 			from sessions s
   				left join users u
 					on s.userid = u.id
@@ -97,8 +103,9 @@ func GetQuery(QryID string) string {
    				password,
    				firstname,
    				lastname,
-   				type)
-			values ($1, $2, $3, $4, $5);`
+   				type,
+				userpic)
+			values ($1, $2, $3, $4, $5, $6);`
 	case I_Session:
 		result = `
 			insert into sessions

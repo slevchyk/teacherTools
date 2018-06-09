@@ -11,6 +11,11 @@ import (
 	"net/http"
 	"time"
 	"strconv"
+	"strings"
+	"crypto/sha1"
+	"io"
+	"os"
+	"path/filepath"
 )
 
 type tplErr struct {
@@ -43,6 +48,8 @@ func main() {
 
 	defer cfg.DB.Close()
 
+	http.Handle("/favicon.ico", http.NotFoundHandler())
+	http.Handle("/public/", http.StripPrefix("/public", http.FileServer(http.Dir("./public"))))
 	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets"))))
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/login", loginHandler)
@@ -101,7 +108,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		var u models.Users
 
 		if rows.Next() {
-			rows.Scan(&u.ID, &u.Email, &u.Password, &u.FirstName, &u.LastName, &u.Type)
+			scanUser(rows, &u)
 		} else {
 			http.Error(w, "Usarname do not patch", http.StatusForbidden)
 			return
@@ -176,12 +183,11 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 
-		userName := r.FormValue("email")
-		password := r.FormValue("password")
-		firstName := r.FormValue("firstName")
-		lastName := r.FormValue("lastName")
+		var u models.Users
 
-		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), userName)
+		u.Email = r.FormValue("email")
+
+		rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
 		if err != nil {
 			panic(err)
 		}
@@ -191,6 +197,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		password := r.FormValue("password")
 		sessionID, _ := uuid.NewV4()
 
 		c := &http.Cookie{
@@ -199,29 +206,56 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, c)
 
-		encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+		u.Password, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 		if err != nil {
 			http.Error(w, "Can't encrypt password", http.StatusInternalServerError)
 			return
 		}
 
-		_, err = cfg.DB.Query(dbase.GetQuery(dbase.I_User), userName, encryptedPassword, firstName, lastName, false)
+		u.FirstName = r.FormValue("firstName")
+		u.LastName = r.FormValue("lastName")
+
+		mf, fh, err := r.FormFile("userpic")
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err = cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), userName)
+		ext := strings.Split(fh.Filename, ".")[1]
+		h := sha1.New()
+		io.Copy(h, mf)
+		u.Userpic = fmt.Sprintf("%x", h.Sum(nil)) + "." + ext
+
+		wd, err := os.Getwd()
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		var userID int
+		path := filepath.Join(wd, "public", "userpics", u.Userpic)
+		nf, err := os.Create(path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		defer nf.Close()
+
+		mf.Seek(0, 0)
+		io.Copy(nf, mf)
+
+		_, err = cfg.DB.Query(dbase.GetQuery(dbase.I_User), u.Email, u.Password, u.FirstName, u.LastName, u.Type, u.Userpic)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		rows, err = cfg.DB.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
 		if rows.Next() {
-			rows.Scan(&userID)
+			scanUser(rows, &u)
 		}
 
-		if userID != 0 {
-			cfg.DB.Query(dbase.GetQuery(dbase.I_Session), sessionID.String(), userID, time.Now(), r.Header.Get("X-Forwarded-For"))
+		if u.ID != 0 {
+			cfg.DB.Query(dbase.GetQuery(dbase.I_Session), sessionID.String(), u.ID, time.Now(), r.Header.Get("X-Forwarded-For"))
 		}
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -257,7 +291,8 @@ func initDb(w http.ResponseWriter, r *http.Request) {
 				password bytea NOT NULL,
 				firstName text,
 				lastName text,
-				type char(100))`)
+				type char(100),
+				userpic char(100))`)
 
 	if err != nil {
 		initDbErrors(w, r, "create users table", err.Error())
@@ -515,7 +550,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if rows.Next() {
-			rows.Scan(&u.ID, &u.Email, &u.Password, &u.FirstName, &u.LastName, &u.Type)
+			scanUser(rows, &u)
 		}
 
 		if u.ID != 0 {
@@ -564,7 +599,7 @@ func userHandler(w http.ResponseWriter, r *http.Request)  {
 		}
 
 		if rows.Next() {
-			rows.Scan(&u.ID, &u.Email, &u.FirstName, &u.LastName, &u.Type)
+			scanUser(rows, &u)
 		}
 
 		td.View = true

@@ -5,3 +5,9 @@
 .padding-top-75 {
     margin-top: 75px;
 }
+
+.userpic{
+    height: 100px;
+    widows: 100px;
+    border-radius: 25%;
+}
