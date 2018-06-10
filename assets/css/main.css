@@ -6,8 +6,10 @@
     margin-top: 75px;
 }
 
-.userpic{
-    height: 100px;
-    widows: 100px;
-    border-radius: 25%;
+.userpic {
+    height: 150px;
+    width: 150px;
+    border-radius: 50%;
+    margin-top:  -85px;
+    margin-bottom: 10px;
 }

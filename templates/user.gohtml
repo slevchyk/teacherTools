@@ -6,16 +6,21 @@
             <div class="row">
                 <div class="col-sm-12 col-md-6 mx-auto">
                     <!-- form card create teacher -->
-                    <div class="card rounded-0 shadow">
+                    <div class="card rounded-0 shadow padding-top-75">
                         <div class="card-header">
-                            <h3 class="mb-0">User {{if .View}}ID={{.User.ID}}{{end}}</h3>
+                            {{if .View}}
+                                <div class="row justify-content-center">
+                                    <img src="public/userpics/{{.User.Userpic}}" class="userpic float-left" alt="user picture">
+                                </div>
+                            {{end}}
+                            {{if .View}}
+                                ID={{.User.ID}}
+                            {{else}}
+                                <h5 class="mb-0">New user</h5>
+                            {{end}}
                         </div>
                         <div class="card-body">
                             <form class="form" role="form" method="POST">
-                                <div class="form-group">
-                                    {{if .View}}<img src="public/userpics/{{.User.Userpic}}" class="userpic float-left" alt="user picture">{{end}}
-                                    <input type="file" name="userpic">
-                                </div>
                                 <div class="form-group">
                                     <label for="firstName">First name</label>
                                     <input type="text" class="form-control" id="firstName" required="" placeholder="first name..." name="firstName" {{if .View}}value="{{.User.FirstName}}"{{end}}>
@@ -31,6 +36,10 @@
                                 <div class="form-group">
                                     <label for="type">Type</label>
                                     <input type="text" class="form-control" id="type" readonly {{if .View}}value="{{.User.Type}}"{{end}}>
+                                </div>
+                                <div class="form-group">
+                                    <label for="userpic">User picture</label>
+                                    <input type="file" class="form-control-file" id="userpic" name="userpic">
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-lg float-right shadow" id="btnCreate"><i class="fa fa-save"></i> Save</button>
                             </form>
