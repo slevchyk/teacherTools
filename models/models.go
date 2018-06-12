@@ -25,8 +25,8 @@ type Sessions struct {
 
 type Levels struct {
 	ID    int
-	Score int8
 	Name  string
+	Score int
 }
 
 type Questions struct {
@@ -70,6 +70,7 @@ type Teachers struct {
 	ID      int
 	LevelID int
 	UserID  int
+	Active	bool
 }
 
 type Students struct {

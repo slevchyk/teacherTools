@@ -1,0 +1,62 @@
+{{ template "header"}}
+
+<div class="container">
+    <div class="row">
+        <table class="table table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">name</th>
+                <th scope="col">score</th>
+                <th scope="col">manage</th>
+            </tr>
+            </thead>
+
+            {{if .}}
+            {{$ID := .ID}}
+
+
+            {{range .Rows}}
+                {{if eq .Levels.ID $ID}}
+                    <form action="levels?action=update&id={{.Levels.ID}}" method="post">
+                        <td>{{.Number}}</td>
+                        <td>
+                            <input type="text" class="form-control" name="name" id="name" required placeholder="name" value="{{.Levels.Name}}">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" name="score" id="score" required placeholder="score" value="{{.Levels.Score}}">
+                        </td>
+                        <td>
+                            <button type="submit" class="btn btn-outline-primary"><i class="fa fa-save"></i> Save</button>
+                        </td>
+                    </form>
+                {{else}}
+                    <tr>
+                        <td>{{.Number}}</td>
+                        <td>{{.Levels.Name}}</td>
+                        <td>{{.Levels.Score}}</td>
+                        <td><a href="/levels?action=edit&id={{.Levels.ID}}" class="btn btn-outline-info"><i class="fa fa-edit"></i> Edit</a></td>
+                    </tr>
+                {{end}}
+            {{end}}
+            {{end}}
+
+            <tr>
+                <form action="levels?action=add" method="post">
+                    <td></td>
+                    <td>
+                        <input type="text" class="form-control" name="name" id="name" required placeholder="name">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control" name="score" id="score" required placeholder="score">
+                    </td>
+                    <td>
+                        <button type="submit" class="btn btn-primary"><i class="fa fa-plus-square"></i> Add</button>
+                    </td>
+                </form>
+            </tr>
+        </table>
+    </div>
+</div>
+
+{{ template "footer" }}

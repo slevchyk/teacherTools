@@ -3,9 +3,7 @@ package main
 import (
 	"net/http"
 	"time"
-
 	"./models"
-	"./cfg"
 	"./dbase"
 )
 
@@ -22,7 +20,7 @@ func getUser(w http.ResponseWriter, r *http.Request) models.Users {
 
 	sessionID := c.Value
 
-	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
+	rows, err := DB.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -48,7 +46,7 @@ func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
 	sessionID := c.Value
 
-	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
+	rows, err := DB.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +66,7 @@ func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
 func cleanSession() {
 
-	rows, err := cfg.DB.Query(dbase.GetQuery(dbase.S_Sessions))
+	rows, err := DB.Query(dbase.GetQuery(dbase.S_Sessions))
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +77,7 @@ func cleanSession() {
 		rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.IP, &s.UserAgent)
 
 		if time.Now().Sub(s.LastActivity) > (time.Duration(SessionLenght) * time.Second) {
-			_, err = cfg.DB.Query(dbase.GetQuery(dbase.D_SessionByUUID), s.ID)
+			_, err = DB.Query(dbase.GetQuery(dbase.D_SessionByUUID), s.ID)
 			if err != nil {
 				panic(err)
 			}

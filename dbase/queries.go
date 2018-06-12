@@ -5,12 +5,16 @@ const (
 	S_UserByEmail          = "SelectUserByEmail"
 	S_UserByID             = "SelectUserByID"
 	S_Sessions             = "SelectSessions"
+	S_Teachers				= "SelectTeachers"
+	S_TeacherByID			= "SelectTeacherByID"
 	S_TeacherByUserID      = "SelectTeacherByUserID"
 	S_StudentsByTeacher    = "SelectStudentsByTeacher"
 	S_Levels               = "SelectLevels"
 	I_User                 = "InsertUser"
 	I_Session              = "InsertSession"
 	I_Teacher              = "InsertTeacher"
+	I_Level				= "InsertLevel"
+	U_Level = "UpadteLevel"
 	U_SessionsLastActivity = "UpdateSessionsLastActivity"
 	D_SessionByID          = "DeleteSessionByID"
 	D_SessionByUUID        = "DeleteSessionByUUID"
@@ -72,6 +76,40 @@ func GetQuery(QryID string) string {
 				s.ip,
 				s.useragent
 			from sessions s;`
+	case S_Teachers:
+		result = `
+			select
+  				t.id,
+  				t.active,
+				t.levelid,
+  				l.name,
+  				u.email,
+  				u.firstname,
+  				u.lastname,
+  				case when u.userpic is null then 'defaultuserpic.png' end as userpic
+			from teachers t
+  			left join users u
+    			on t.userid = u.id
+  			left join levels l
+    			on t.levelid = l.id;`
+	case S_TeacherByID:
+		result = `
+			select
+  				t.id,
+  				t.active,
+				t.levelid,
+  				l.name,
+  				u.email,
+  				u.firstname,
+  				u.lastname,
+  				case when u.userpic is null then 'defaultuserpic.png' end as userpic
+			from teachers t
+  			left join users u
+    			on t.userid = u.id
+  			left join levels l
+    			on t.levelid = l.id
+			where
+				t.id = $1;`
 	case S_TeacherByUserID:
 		result = `
 			select
@@ -95,7 +133,9 @@ func GetQuery(QryID string) string {
 				l.id,
 				l.name,
 				l.score
-			from levels l;`
+			from levels l
+			order by
+				l.id;`
 	case I_User:
 		result = `
 			insert into users
@@ -121,11 +161,25 @@ func GetQuery(QryID string) string {
 				(userid,
    				levelid)
 			values ($1, $2);`
+	case I_Level:
+		result = `
+			insert into levels
+				(name,
+				score)
+			values ($1, $2)`
 	case U_SessionsLastActivity:
 		result = `
 			update sessions
 
 			with`
+	case U_Level:
+		result = `
+			update levels
+			set
+				name=$2,
+				score=$3
+			where
+				id=$1`
 	case D_SessionByID:
 		result = `
 			delete				
