@@ -20,14 +20,17 @@ func getUser(w http.ResponseWriter, r *http.Request) models.Users {
 
 	sessionID := c.Value
 
-	rows, err := DB.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
+	rows, err := db.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
 	if err != nil {
 		panic(err)
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		scanUser(rows, &u)
+		err = scanUser(rows, &u)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 
 	return u
@@ -46,7 +49,7 @@ func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
 	sessionID := c.Value
 
-	rows, err := DB.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
+	rows, err := db.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -66,7 +69,7 @@ func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
 func cleanSession() {
 
-	rows, err := DB.Query(dbase.GetQuery(dbase.S_Sessions))
+	rows, err := db.Query(dbase.GetQuery(dbase.S_Sessions))
 	if err != nil {
 		panic(err)
 	}
@@ -74,12 +77,13 @@ func cleanSession() {
 	var s models.Sessions
 
 	for rows.Next()	{
-		rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.IP, &s.UserAgent)
-
-		if time.Now().Sub(s.LastActivity) > (time.Duration(SessionLenght) * time.Second) {
-			_, err = DB.Query(dbase.GetQuery(dbase.D_SessionByUUID), s.ID)
-			if err != nil {
-				panic(err)
+		err = rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.IP, &s.UserAgent)
+		if err == nil {
+			if time.Now().Sub(s.LastActivity) > (time.Duration(SessionLenght) * time.Second) {
+				_, err = db.Query(dbase.GetQuery(dbase.D_SessionByUUID), s.ID)
+				if err != nil {
+					panic(err)
+				}
 			}
 		}
 	}
