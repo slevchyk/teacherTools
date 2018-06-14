@@ -1,8 +1,8 @@
 package main
 
 import (
-	"database/sql"
 	"./models"
+	"database/sql"
 )
 
 func scanUser(rows *sql.Rows, u *models.Users) error {

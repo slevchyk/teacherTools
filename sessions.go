@@ -1,10 +1,10 @@
 package main
 
 import (
+	"./dbase"
+	"./models"
 	"net/http"
 	"time"
-	"./models"
-	"./dbase"
 )
 
 func getUser(w http.ResponseWriter, r *http.Request) models.Users {
@@ -15,12 +15,12 @@ func getUser(w http.ResponseWriter, r *http.Request) models.Users {
 	if err != nil {
 		return u
 	}
-	c.MaxAge = SessionLenght
+	c.MaxAge = sessionLenght
 	http.SetCookie(w, c)
 
 	sessionID := c.Value
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
+	rows, err := db.Query(dbase.GetQuery(dbase.SUserBySessionID), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -38,7 +38,7 @@ func getUser(w http.ResponseWriter, r *http.Request) models.Users {
 
 func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
-	if time.Now().Sub(lastSessionCleaned) > (time.Duration(SessionLenght) * time.Second) {
+	if time.Now().Sub(lastSessionCleaned) > (time.Duration(sessionLenght) * time.Second) {
 		go cleanSession()
 	}
 
@@ -49,7 +49,7 @@ func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
 	sessionID := c.Value
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_UserBySessionID), sessionID)
+	rows, err := db.Query(dbase.GetQuery(dbase.SUserBySessionID), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +61,7 @@ func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 		ok = true
 	}
 
-	c.MaxAge = SessionLenght
+	c.MaxAge = sessionLenght
 	http.SetCookie(w, c)
 
 	return ok
@@ -69,18 +69,18 @@ func alreadyLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
 func cleanSession() {
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_Sessions))
+	rows, err := db.Query(dbase.GetQuery(dbase.SSessions))
 	if err != nil {
 		panic(err)
 	}
 
 	var s models.Sessions
 
-	for rows.Next()	{
+	for rows.Next() {
 		err = rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.IP, &s.UserAgent)
 		if err == nil {
-			if time.Now().Sub(s.LastActivity) > (time.Duration(SessionLenght) * time.Second) {
-				_, err = db.Query(dbase.GetQuery(dbase.D_SessionByUUID), s.ID)
+			if time.Now().Sub(s.LastActivity) > (time.Duration(sessionLenght) * time.Second) {
+				_, err = db.Query(dbase.GetQuery(dbase.DSessionByUUID), s.ID)
 				if err != nil {
 					panic(err)
 				}
@@ -90,5 +90,3 @@ func cleanSession() {
 
 	lastSessionCleaned = time.Now()
 }
-
-

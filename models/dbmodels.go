@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+//Users is a struct of table users
 type Users struct {
 	ID        int
 	Email     string
@@ -14,6 +15,7 @@ type Users struct {
 	Userpic   string
 }
 
+//Sessions is a struct of table sessions
 type Sessions struct {
 	ID           int
 	UUID         string
@@ -23,12 +25,14 @@ type Sessions struct {
 	UserAgent    string
 }
 
+//Levels is a struct of table levels
 type Levels struct {
 	ID    int
 	Name  string
 	Score int
 }
 
+//Questions is a struct of table questions
 type Questions struct {
 	ID          int
 	Question    string
@@ -39,6 +43,7 @@ type Questions struct {
 	TeacherID   int
 }
 
+//Answers is a struct of table answers
 type Answers struct {
 	ID          int
 	Answer      string
@@ -48,6 +53,7 @@ type Answers struct {
 	TeacherID   int
 }
 
+//Hometasks is a struct of table hometasks
 type Hometasks struct {
 	ID            int
 	Score         float32
@@ -58,6 +64,7 @@ type Hometasks struct {
 	TeacherID     int
 }
 
+//HometaskSpecs is a struct of table hometaskSpecs
 type HometaskSpecs struct {
 	ID         int
 	Answer     int
@@ -66,19 +73,22 @@ type HometaskSpecs struct {
 	QuestionID int
 }
 
+//Teachers is a struct of table teachers
 type Teachers struct {
 	ID      int
 	LevelID int
 	UserID  int
-	Active	bool
+	Active  bool
 }
 
+//Students is a struct of table students
 type Students struct {
 	ID      int
 	LevelID int
 	UserID  int
 }
 
+//Parents is a struct of table parents
 type Parents struct {
 	ID        int
 	UserID    int

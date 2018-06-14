@@ -1,31 +1,34 @@
 package dbase
 
+//Query names for function GetQuery
 const (
-	S_UserBySessionID      = "SelectUserBySessionID"
-	S_UserByEmail          = "SelectUserByEmail"
-	S_UserByID             = "SelectUserByID"
-	S_Sessions             = "SelectSessions"
-	S_Teachers				= "SelectTeachers"
-	S_TeacherByID			= "SelectTeacherByID"
-	S_TeacherByUserID      = "SelectTeacherByUserID"
-	S_StudentsByTeacher    = "SelectStudentsByTeacher"
-	S_Levels               = "SelectLevels"
-	I_User                 = "InsertUser"
-	I_Session              = "InsertSession"
-	I_Teacher              = "InsertTeacher"
-	I_Level				= "InsertLevel"
-	U_Level = "UpadteLevel"
-	U_SessionsLastActivity = "UpdateSessionsLastActivity"
-	D_SessionByID          = "DeleteSessionByID"
-	D_SessionByUUID        = "DeleteSessionByUUID"
+	SUserBySessionID      = "SelectUserBySessionID"
+	SUserByEmail          = "SelectUserByEmail"
+	SUserByID             = "SelectUserByID"
+	SSessions             = "SelectSessions"
+	STeachers             = "SelectTeachers"
+	STeacherByID          = "SelectTeacherByID"
+	STeacherByUserID      = "SelectTeacherByUserID"
+	SStudentsByTeacher    = "SelectStudentsByTeacher"
+	SelectQuestions = "SelectQuestions"
+	SLevels               = "SelectLevels"
+	IUser                 = "InsertUser"
+	ISession              = "InsertSession"
+	ITeacher              = "InsertTeacher"
+	ILevel                = "InsertLevel"
+	ULevel                = "UpadteLevel"
+	USessionsLastActivity = "UpdateSessionsLastActivity"
+	DSessionByID          = "DeleteSessionByID"
+	DSessionByUUID        = "DeleteSessionByUUID"
 )
 
+//GetQuery function return query text by query name (u can use const from this pkg)
 func GetQuery(QryID string) string {
 
 	var result string
 
 	switch QryID {
-	case S_UserByEmail:
+	case SUserByEmail:
 		result = `
 			select
 				u.id,
@@ -38,7 +41,7 @@ func GetQuery(QryID string) string {
 			from users u
 			where
 				u.email = $1;`
-	case S_UserByID:
+	case SUserByID:
 		result = `
 			select
 				u.id,
@@ -51,7 +54,7 @@ func GetQuery(QryID string) string {
 			from users u
 			where
 				u.id = $1;`
-	case S_UserBySessionID:
+	case SUserBySessionID:
 		result = `
 			select 
   				u.id,
@@ -66,7 +69,7 @@ func GetQuery(QryID string) string {
 					on s.userid = u.id
 			where
 				s.uuid = $1;`
-	case S_Sessions:
+	case SSessions:
 		result = `
 			select
 				s.id,
@@ -76,7 +79,7 @@ func GetQuery(QryID string) string {
 				s.ip,
 				s.useragent
 			from sessions s;`
-	case S_Teachers:
+	case STeachers:
 		result = `
 			select
   				t.id,
@@ -92,7 +95,7 @@ func GetQuery(QryID string) string {
     			on t.userid = u.id
   			left join levels l
     			on t.levelid = l.id;`
-	case S_TeacherByID:
+	case STeacherByID:
 		result = `
 			select
   				t.id,
@@ -110,7 +113,7 @@ func GetQuery(QryID string) string {
     			on t.levelid = l.id
 			where
 				t.id = $1;`
-	case S_TeacherByUserID:
+	case STeacherByUserID:
 		result = `
 			select
 				t.id,
@@ -118,7 +121,7 @@ func GetQuery(QryID string) string {
 			from teachers t
 			where
 				t.userid = $1;`
-	case S_StudentsByTeacher:
+	case SStudentsByTeacher:
 		result = `
 			select
 				s.id,
@@ -127,7 +130,24 @@ func GetQuery(QryID string) string {
 			from students s
 			where
 				s.teacherid = $1;`
-	case S_Levels:
+	case SelectQuestions:
+		result = `
+			select
+  				q.id,
+  				q.question,
+  				q.type,
+  				q.score,
+  				q.datecreated,
+  				q.levelid,
+  				l.name
+			from questions q
+  				left join levels l
+    				on q.levelid = l.id
+			order by
+  				l.score,
+  				q.type,
+				q.datecreated;`
+	case SLevels:
 		result = `
 			select
 				l.id,
@@ -136,7 +156,7 @@ func GetQuery(QryID string) string {
 			from levels l
 			order by
 				l.id;`
-	case I_User:
+	case IUser:
 		result = `
 			insert into users
 				(email,
@@ -146,7 +166,7 @@ func GetQuery(QryID string) string {
    				type,
 				userpic)
 			values ($1, $2, $3, $4, $5, $6);`
-	case I_Session:
+	case ISession:
 		result = `
 			insert into sessions
 				(uuid,
@@ -155,24 +175,24 @@ func GetQuery(QryID string) string {
 				ip,
 				useragent)
 			values ($1, $2, $3, $4, $5);`
-	case I_Teacher:
+	case ITeacher:
 		result = `
 			insert into teachers
 				(userid,
    				levelid)
 			values ($1, $2);`
-	case I_Level:
+	case ILevel:
 		result = `
 			insert into levels
 				(name,
 				score)
 			values ($1, $2)`
-	case U_SessionsLastActivity:
+	case USessionsLastActivity:
 		result = `
 			update sessions
 
 			with`
-	case U_Level:
+	case ULevel:
 		result = `
 			update levels
 			set
@@ -180,13 +200,13 @@ func GetQuery(QryID string) string {
 				score=$3
 			where
 				id=$1`
-	case D_SessionByID:
+	case DSessionByID:
 		result = `
 			delete				
 			from sessions s
 			where
 				s.id = $1;`
-	case D_SessionByUUID:
+	case DSessionByUUID:
 		result = `
 			delete				
 			from sessions s

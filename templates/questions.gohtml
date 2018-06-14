@@ -1,0 +1,126 @@
+{{ template "header"}}
+
+{{ $cvLevel := .ColumnsVisibility.Level }}
+{{ $cvType := .ColumnsVisibility.QType }}
+{{ $cvScore := .ColumnsVisibility.Score }}
+{{ $cvDateCreated := .ColumnsVisibility.DateCreated }}
+
+<div class="container">
+    <div class="col-md-12">
+        {{/*<div class="row">*/}}
+            <p> Set columns visibility:</p>
+        {{/*</div>*/}}
+        {{/*<div class="row">*/}}
+            <form action="/questions?action=visibility" method="post">
+                <div class="form-check-inline">
+                    <label class="form-check-label">
+                        <input type="checkbox" class="form-check-input" value="1" name="cvLevel" {{if eq $cvLevel true}}checked{{end}}>level
+                    </label>
+                </div>
+                <div class="form-check-inline">
+                    <label class="form-check-label">
+                        <input type="checkbox" class="form-check-input" value="1" name="cvType" {{if eq $cvType true}}checked{{end}}>type
+                    </label>
+                </div>
+                <div class="form-check-inline">
+                    <label class="form-check-label">
+                        <input type="checkbox" class="form-check-input" value="1" name="cvScore" {{if eq $cvScore true}}checked{{end}}>score
+                    </label>
+                </div>
+                <div class="form-check-inline">
+                    <label class="form-check-label">
+                        <input type="checkbox" class="form-check-input" value="1" name="cvDateCreated" {{if eq $cvDateCreated true}}checked{{end}}>date created
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-outline-primary"><i class="fa fa-eye"></i> Submit</button>
+            </form>
+
+            <p></p>
+        {{/*</div>*/}}
+    </div>
+
+    <div class="row">
+        <table class="table table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th scope="col">#</th>
+                {{if eq $cvLevel true}}
+                    <th scope="col">level</th>
+                {{end}}
+
+                {{if eq $cvType true}}
+                    <th scope="col">type</th>
+                {{end}}
+
+                <th scope="col">question</th>
+
+                {{if eq $cvScore true}}
+                <th scope="col">score</th>
+                {{end}}
+
+                {{if eq $cvDateCreated true}}
+                    <th scope="col">datecreated</th>
+                {{end}}
+
+                <th scope="col">manage</th>
+            </tr>
+            </thead>
+
+        {{if .}}
+
+            {{range .Rows}}
+                    <tr>
+                        <td>{{.Number}}</td>
+
+                        {{if eq $cvLevel true}}
+                            <td>{{.Level.Name}}</td>
+                        {{end}}
+
+                        {{if eq $cvType true}}
+                            <td>{{.Question.Type}}</td>
+                        {{end}}
+
+                        <td>{{.Question.Question}}</td>
+
+                        {{if eq $cvScore true}}
+                            <td>{{.Question.Score}}</td>
+                        {{end}}
+
+                        {{if eq $cvDateCreated true}}
+                            <td>{{.Question.DateCteated}}</td>
+                        {{end}}
+
+                        <td><a href="/question?action=edit&id={{.Question.ID}}" class="btn btn-outline-info"><i class="fa fa-edit"></i> Edit</a></td>
+                    </tr>
+            {{end}}
+        {{end}}
+
+        <tr>
+            <td></td>
+
+            {{if eq $cvLevel true}}
+                <td></td>
+            {{end}}
+
+            {{if eq $cvType true}}
+                <td></td>
+            {{end}}
+
+            <td></td>
+
+            {{if eq $cvScore true}}
+                <td></td>
+            {{end}}
+
+            {{if eq $cvDateCreated true}}
+                <td></td>
+            {{end}}
+
+            <td><a href="/question?action=add" class="btn btn-primary"><i class="fa fa-plus-square"></i> Add</a></td>
+        </tr>
+
+        </table>
+    </div>
+</div>
+
+{{ template "footer" }}

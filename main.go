@@ -1,22 +1,24 @@
 package main
 
 import (
-	"./models"
 	"./dbase"
+	"./models"
+	"crypto/sha1"
+	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/bcrypt"
-	"net/http"
-	"time"
-	"strconv"
-	"strings"
-	"crypto/sha1"
+	"html/template"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
-	"database/sql"
-	"html/template"
+	"strconv"
+	"strings"
+	"time"
+	"encoding/json"
+	"encoding/base64"
 )
 
 type tplErr struct {
@@ -35,6 +37,7 @@ var tpl *template.Template
 
 var td tplData
 var lastSessionCleaned time.Time
+
 //var userTypes = map[string]string{
 //	"a": "admin",
 //	"t": "teacher",
@@ -42,7 +45,7 @@ var lastSessionCleaned time.Time
 //	"p": "parents",
 //}
 
-const SessionLenght int = 300
+const sessionLenght int = 300
 
 func init() {
 	var err error
@@ -77,6 +80,7 @@ func main() {
 	http.HandleFunc("/levels", levelsHandler)
 	http.HandleFunc("/teachers", teachersHandler)
 	http.HandleFunc("/teacher", teacherHandler)
+	http.HandleFunc("/questions", questionsHandler)
 	http.HandleFunc("/admin/db", adminDbHandler)
 	http.HandleFunc("/admin/sessions", adminSessionsHandler)
 	http.HandleFunc("/admin/editteacher", editteacherHandler)
@@ -107,7 +111,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 
 		//check user
-		rows, err := db.Query(dbase.GetQuery(dbase.S_UserByEmail), email)
+		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -138,7 +142,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		c := &http.Cookie{
 			Name:   "session",
 			Value:  sessionID.String(),
-			MaxAge: SessionLenght,
+			MaxAge: sessionLenght,
 		}
 		http.SetCookie(w, c)
 
@@ -150,7 +154,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		s.IP = r.RemoteAddr
 		s.UserAgent = r.Header.Get("User-Agent")
 
-		_, err = db.Query(dbase.GetQuery(dbase.I_Session), s.UUID, u.ID, s.LastActivity, s.IP, s.UserAgent)
+		_, err = db.Query(dbase.GetQuery(dbase.ISession), s.UUID, u.ID, s.LastActivity, s.IP, s.UserAgent)
 		if err != nil {
 			panic(err)
 		}
@@ -178,7 +182,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionID := c.Value
-	_, err = db.Query(dbase.GetQuery(dbase.D_SessionByUUID), sessionID)
+	_, err = db.Query(dbase.GetQuery(dbase.DSessionByUUID), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -201,7 +205,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 		u.Email = r.FormValue("email")
 
-		rows, err := db.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
+		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
 		if err != nil {
 			panic(err)
 		}
@@ -266,12 +270,12 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		_, err = db.Query(dbase.GetQuery(dbase.I_User), u.Email, u.Password, u.FirstName, u.LastName, u.Type, u.Userpic)
+		_, err = db.Query(dbase.GetQuery(dbase.IUser), u.Email, u.Password, u.FirstName, u.LastName, u.Type, u.Userpic)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err = db.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
+		rows, err = db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -284,7 +288,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if u.ID != 0 {
-			_, err = db.Query(dbase.GetQuery(dbase.I_Session), sessionID.String(), u.ID, time.Now(), r.Header.Get("X-Forwarded-For"))
+			_, err = db.Query(dbase.GetQuery(dbase.ISession), sessionID.String(), u.ID, time.Now(), r.Header.Get("X-Forwarded-For"))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -445,7 +449,7 @@ func initDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_UserByEmail), "admin")
+	rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), "admin")
 	if err != nil {
 		panic(err)
 	}
@@ -453,7 +457,7 @@ func initDb(w http.ResponseWriter, r *http.Request) {
 
 	if !rows.Next() {
 		encryptedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.MinCost)
-		_, err = db.Exec(dbase.GetQuery(dbase.I_User), "admin@domain.com", encryptedPassword, "Root", "User", "admin")
+		_, err = db.Exec(dbase.GetQuery(dbase.IUser), "admin@domain.com", encryptedPassword, "Root", "User", "admin")
 		fmt.Println(err)
 	}
 
@@ -494,7 +498,7 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		_, err = db.Query(dbase.GetQuery(dbase.D_SessionByID), id)
+		_, err = db.Query(dbase.GetQuery(dbase.DSessionByID), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -502,7 +506,7 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/sessions", http.StatusSeeOther)
 	}
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_Sessions))
+	rows, err := db.Query(dbase.GetQuery(dbase.SSessions))
 	if err != nil {
 		panic(err)
 	}
@@ -541,7 +545,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 	var u models.Users
 	var t models.Teachers
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_Levels))
+	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -557,7 +561,6 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 
-
 		l.ID, err = strconv.Atoi(r.FormValue("level"))
 		if err != nil {
 			panic(err)
@@ -567,7 +570,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 		u.FirstName = r.FormValue("firstName")
 		u.LastName = r.FormValue("lastName")
 
-		rows, err := db.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
+		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
 		if err != nil {
 			panic(err)
 		}
@@ -586,13 +589,13 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		u.Password = encryptedPassword
 
-		_, err = db.Query(dbase.GetQuery(dbase.I_User), u.Email, u.Password, u.FirstName, u.LastName, "teacher")
+		_, err = db.Query(dbase.GetQuery(dbase.IUser), u.Email, u.Password, u.FirstName, u.LastName, "teacher")
 		if err != nil {
 			http.Error(w, "Can't create user", http.StatusInternalServerError)
 			return
 		}
 
-		rows, err = db.Query(dbase.GetQuery(dbase.S_UserByEmail), u.Email)
+		rows, err = db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
 		if err != nil {
 			http.Error(w, "Can't select user", http.StatusInternalServerError)
 		}
@@ -609,7 +612,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 			t.UserID = u.ID
 			t.LevelID = l.ID
 
-			_, err = db.Query(dbase.GetQuery(dbase.I_Teacher), t.UserID, t.LevelID)
+			_, err = db.Query(dbase.GetQuery(dbase.ITeacher), t.UserID, t.LevelID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -625,9 +628,9 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func userHandler(w http.ResponseWriter, r *http.Request)  {
+func userHandler(w http.ResponseWriter, r *http.Request) {
 
-	type tplData struct{
+	type tplData struct {
 		View bool
 		User models.Users
 	}
@@ -647,7 +650,7 @@ func userHandler(w http.ResponseWriter, r *http.Request)  {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err := db.Query(dbase.GetQuery(dbase.S_UserByID), id)
+		rows, err := db.Query(dbase.GetQuery(dbase.SUserByID), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -669,13 +672,13 @@ func userHandler(w http.ResponseWriter, r *http.Request)  {
 	}
 }
 
-func teachersHandler(w http.ResponseWriter, r *http.Request)  {
+func teachersHandler(w http.ResponseWriter, r *http.Request) {
 
 	type tplData struct {
-		Number int
+		Number  int
 		Teacher models.Teachers
-		User models.Users
-		Level models.Levels
+		User    models.Users
+		Level   models.Levels
 	}
 
 	var std []tplData
@@ -685,7 +688,7 @@ func teachersHandler(w http.ResponseWriter, r *http.Request)  {
 	var u models.Users
 	var l models.Levels
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_Teachers))
+	rows, err := db.Query(dbase.GetQuery(dbase.STeachers))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -698,7 +701,7 @@ func teachersHandler(w http.ResponseWriter, r *http.Request)  {
 		}
 
 		i++
-		std = append(std, tplData{Number:i, Teacher:t, User:u, Level: l})
+		std = append(std, tplData{Number: i, Teacher: t, User: u, Level: l})
 	}
 
 	err = tpl.ExecuteTemplate(w, "teacherslist.gohtml", std)
@@ -710,11 +713,11 @@ func teachersHandler(w http.ResponseWriter, r *http.Request)  {
 func teacherHandler(w http.ResponseWriter, r *http.Request) {
 
 	type tplData struct {
-		View bool
+		View    bool
 		Teacher models.Teachers
-		User models.Users
-		Level models.Levels
-		Levels []models.Levels
+		User    models.Users
+		Level   models.Levels
+		Levels  []models.Levels
 	}
 
 	var td tplData
@@ -723,7 +726,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 
 	td.View = false
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_Levels))
+	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -748,7 +751,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err = db.Query(dbase.GetQuery(dbase.S_TeacherByID), id)
+		rows, err = db.Query(dbase.GetQuery(dbase.STeacherByID), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -780,7 +783,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 	var l models.Levels
 	var i int
 
-	rows, err := db.Query(dbase.GetQuery(dbase.S_Levels))
+	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -793,7 +796,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		i++
-		sr = append(sr, models.LevelRow{Number:i, Levels:l})
+		sr = append(sr, models.LevelRow{Number: i, Levels: l})
 	}
 	td.Rows = sr
 
@@ -809,7 +812,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 
 		l.Name = r.FormValue("name")
 
-		_, err = db.Query(dbase.GetQuery(dbase.I_Level), l.Name, l.Score)
+		_, err = db.Query(dbase.GetQuery(dbase.ILevel), l.Name, l.Score)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -839,11 +842,11 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 
 		l.Name = r.FormValue("name")
 
-		_, err := db.Query(dbase.GetQuery(dbase.U_Level), l.ID, l.Name, l.Score)
+		_, err := db.Query(dbase.GetQuery(dbase.ULevel), l.ID, l.Name, l.Score)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		
+
 		http.Redirect(w, r, "/levels", http.StatusSeeOther)
 		return
 	}
@@ -852,4 +855,117 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func questionsHandler(w http.ResponseWriter, r *http.Request)  {
+
+	var td models.TplQuestions
+	var sr []models.QuestionsRow
+	var q models.Questions
+	var l models.Levels
+	var i int
+
+	var cvLevel string
+	var cvType string
+	var cvScore string
+	var cvDateCreated string
+
+	c, err := r.Cookie("questionColumnsVisibility")
+	if err != nil {
+		td.ColumnsVisibility.Level = true
+		td.ColumnsVisibility.QType = true
+		td.ColumnsVisibility.Score = true
+		td.ColumnsVisibility.DateCreated = false
+	} else {
+
+		dsb, err := base64.StdEncoding.DecodeString(c.Value)
+		if err != nil {
+			c.MaxAge = -1
+			http.SetCookie(w, c)
+
+			http.Redirect(w, r, "/questions", http.StatusSeeOther)
+		}
+
+		err = json.Unmarshal(dsb, &td.ColumnsVisibility)
+		if err != nil {
+			c.MaxAge = -1
+			http.SetCookie(w, c)
+
+			http.Redirect(w, r, "/questions", http.StatusSeeOther)		}
+	}
+
+	if r.Method == http.MethodPost {
+
+		cvLevel = r.FormValue("cvLevel")
+		if cvLevel == "1" {
+			td.ColumnsVisibility.Level = true
+		} else {
+			td.ColumnsVisibility.Level = false
+		}
+
+		cvType = r.FormValue("cvType")
+		if cvType == "1" {
+			td.ColumnsVisibility.QType = true
+		} else {
+			td.ColumnsVisibility.QType = false
+		}
+
+		cvScore = r.FormValue("cvScore")
+		if cvScore == "1" {
+			td.ColumnsVisibility.Score = true
+		} else {
+			td.ColumnsVisibility.Score = false
+		}
+
+		cvDateCreated = r.FormValue("cvDateCreated")
+		if cvDateCreated == "1" {
+			td.ColumnsVisibility.DateCreated = true
+		} else {
+			td.ColumnsVisibility.DateCreated = false
+		}
+
+		fmt.Println(td.ColumnsVisibility)
+
+		bs, err := json.Marshal(td.ColumnsVisibility)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		s64 := base64.StdEncoding.EncodeToString(bs)
+
+		c := &http.Cookie{
+			Name:   "questionColumnsVisibility",
+			Value:  s64,
+		}
+		http.SetCookie(w, c)
+
+		http.Redirect(w, r, "/questions", http.StatusSeeOther)
+
+	}
+
+	rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestions))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&q.ID, &q.Question, &q.Type, &q.Score, &q.DateCteated, &q.LevelID, &l.Name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		i++
+		sr = append(sr, models.QuestionsRow{i, q, l})
+	}
+
+	td.Rows = sr
+
+
+
+	err = tpl.ExecuteTemplate(w, "questions.gohtml", td)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
 }
