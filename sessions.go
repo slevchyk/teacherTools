@@ -73,6 +73,7 @@ func cleanSession() {
 	if err != nil {
 		panic(err)
 	}
+	defer rows.Close()
 
 	var s models.Sessions
 

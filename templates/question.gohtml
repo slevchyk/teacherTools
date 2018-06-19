@@ -1,0 +1,118 @@
+{{ template "header"}}
+
+<div class="container">
+    <div class="row">
+        <div class="col-sm-12 col-md-12">
+            <div class="row">
+                <div class="col-sm-12 col-md-6 mx-auto">
+                    <!-- form card teacher -->
+                    <div class="card rounded-0 shadow">
+                        <div class="card-header">
+                            {{if .Edit}}
+                                Editing Question ID={{.Question.ID}}
+                            {{else}}
+                                <h6 class="mb-0">New question</h6>
+                            {{end}}
+                        </div>
+                        <div class="card-body">
+                            <form class="form" role="form" method="POST">
+                                <div class="form-group">
+                                    {{$LevelID := .Question.LevelID}}
+                                    <label for="level">English level</label>
+                                    <select class="form-control" id="level" name="level">
+                                    {{range .Levels}}
+                                        <h2>{{.ID}} - {{.Name}}</h2>
+                                        {{if eq .ID $LevelID}}
+                                            <option selected="selected" value={{.ID}}>{{.Name}}</option>
+                                        {{else}}
+                                            <option value={{.ID}}>{{.Name}}</option>
+                                        {{end}}
+                                    {{end}}
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    {{$QType := .Question.Type}}
+                                    <label for="qType">English level</label>
+                                    <select class="form-control" id="qType" name="qType">
+                                    {{range $key, $val := .QuestionTypes}}
+                                        <h2>{{$key}} - {{$val}}</h2>
+                                        {{if eq $key $QType}}
+                                            <option selected="selected" value={{$key}}>{{$val}}</option>
+                                        {{else}}
+                                            <option value={{$key}}>{{$val}}</option>
+                                        {{end}}
+                                    {{end}}
+                                    </select>
+
+                                    {{/*<label for="qType">Type</label>*/}}
+                                    {{/*<input type="text" class="form-control" id="qTypoe" required="" placeholder="question type" name="qType" {{if .Edit}}value="{{.Question.Type}}"{{end}}>*/}}
+                                </div>
+                                <div class="form-group">
+                                    <label for="question">Question</label>
+                                    <textarea class="form-control" rows="4" id="question" required="" placeholder="question..." name="question">{{if .Edit}}{{.Question.Question}}{{end}}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="score">Score</label>
+                                    <input type="number" class="form-control" min="1" max="99" step="1" data-bind="value:score" id="score" required="" placeholder="score..." name="score" {{if .Edit}}value="{{.Question.Score}}"{{end}}>
+                                </div>
+
+                                {{if eq .Edit true}}
+                                    <div class="form-group">
+                                        <label for="dateCteated">Date created</label>
+                                        <input type="text" class="form-control-plaintext" readonly id="dateCteated" required="" placeholder="score..." name="dateCteated" value="{{.Question.DateCteated}}">
+                                    </div>
+                                {{end}}
+
+                                <button type="submit" class="btn btn-primary btn-lg float-right shadow" id="btnCreate">
+                                    {{if .Edit}}
+                                        <i class="fa fa-save"></i> Save
+                                    {{else}}
+                                        <i class="fa fa-user"></i> Create
+                                    {{end}}
+                                </button>
+                            </form>
+                        </div>
+                        <!--/card-block-->
+                    </div>
+                    <!-- /form card login -->
+
+                    <div class="card rounded-0 shadow">
+                        <div class="card-header">
+                            <h6>Answers</h6>
+                        </div>
+                        <!-- /card-header -->
+                        <div class="card-body">
+                            <table class="table table-sm table-striped">
+                                <thead class="thead-dark">
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">correct</th>
+                                    <th scope="col">answer</th>
+                                </tr>
+                                </thead>
+
+                                {{range .AnswerRows}}
+                                    <tr>
+                                        <td>{{.Number}}</td>
+                                        <td>{{if eq .Answer.Correct true}} <i class="fa fa-check-circle"></i>{{end}}</td>
+                                        <td>{{.Answer.Answer}}</td>
+                                    </tr>
+                                {{end}}
+                            </table>
+                            <a href="/answers?action=edit&id={{.Question.ID}}" class="btn btn-outline-info float-right"><i class="fa fa-edit"></i> Edit</a>
+                        </div>
+                    </div>
+                    <!-- /form card answers -->
+                </div>
+                <!--/class="col-md-6 mx-auto"-->
+            </div>
+            <!--/row-->
+        </div>
+        <!--/col-->
+    </div>
+    <!--/row-->
+</div>
+<!--/container-->
+
+{{ template "footer"}}

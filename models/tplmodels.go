@@ -12,20 +12,44 @@ type TplLevels struct {
 	Rows []LevelRow
 }
 
+//QuestionsRow is a part of TplQuestions struct for questions.gohtml
 type QuestionsRow struct {
 	Number int
 	Question Questions
 	Level Levels
 }
 
-type QuestionsColumnsVisibility struct {
+//questionsColumnsVisibility is a part of TplQuestions struct for questions.gohtml
+//set columns visibility on questions web-page
+type questionsColumnsVisibility struct {
 	Level bool `json:"level"`
 	QType bool `json:"type"`
 	Score bool `json:"score"`
 	DateCreated bool `json:"dateCreated"`
 }
 
+//TplQuestions data type for questions.gohtml
 type TplQuestions struct {
-	ColumnsVisibility QuestionsColumnsVisibility
+	ColumnsVisibility questionsColumnsVisibility
 	Rows              []QuestionsRow
+}
+
+type AnswerRow struct {
+	Number int
+	Answer Answers
+}
+
+type TplQuestion struct {
+	Edit bool
+	Question Questions
+	Level Levels
+	Levels []Levels
+	AnswerRows []AnswerRow
+	QuestionTypes map[string]string
+}
+
+type TplAnswers struct{
+	Question Questions
+	Levels Levels
+	Answers []Answers
 }

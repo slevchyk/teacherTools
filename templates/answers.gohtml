@@ -1,0 +1,50 @@
+{{ define "answers" }}
+
+<div class="container">
+    <div class="row">
+        <table class="table table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">correct</th>
+                <th scope="col">answer</th>
+                <th scope="col">manage</th>
+            </tr>
+            </thead>
+
+            {{range .AnswerRows}}
+                <tr>
+                    <form  method="post">
+                        <td>{{.Number}}</td>
+                        <td>
+                            <input type="checkbox" class="form-control" id="correct" name="correct" {{if eq .Answer.Correct true}}checked{{end}}>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" name="answer" id="answer" required placeholder="score" value="{{.Answer.Answer}}">
+                        </td>
+                        <td>
+                            <a href="/answers?action=edit&id={{.Question.ID}}&answer=edit&answerid={{.Answer.ID}}" class="btn btn-outline-info"><i class="fa fa-edit"></i> Edit</a>
+                        </td>
+                    </form>
+                </tr>
+            {{end}}
+
+            <tr>
+                <form method="post">
+                    <td></td>
+                    <td>
+                        <input type="checkbox" class="form-control" name="correct" id="correct">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control" name="answer" id="answer" required placeholder="answer...">
+                    </td>
+                    <td>
+                        <a href="/answers?action=edit&id={{.Question.ID}}&answer=create" class="btn btn-outline-info"><i class="fa fa-edit"></i> Add</a>
+                    </td>
+                </form>
+            </tr>
+        </table>
+    </div>
+</div>
+
+{{ end }}

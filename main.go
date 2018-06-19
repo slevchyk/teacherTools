@@ -38,6 +38,10 @@ var tpl *template.Template
 var td tplData
 var lastSessionCleaned time.Time
 
+var questionTypes = map[string]string{
+	"qTypeChooseCorrectTranslation": "Choose the correct translation",
+	"qTypeSelectMissingWord": "Select the missing word",
+}
 //var userTypes = map[string]string{
 //	"a": "admin",
 //	"t": "teacher",
@@ -46,6 +50,11 @@ var lastSessionCleaned time.Time
 //}
 
 const sessionLenght int = 300
+
+const (
+	qTypeChooseCorrectTranslation = "Choose the correct translation"
+	qTypeSelectMissingWord = "Select the missing word"
+)
 
 func init() {
 	var err error
@@ -81,6 +90,8 @@ func main() {
 	http.HandleFunc("/teachers", teachersHandler)
 	http.HandleFunc("/teacher", teacherHandler)
 	http.HandleFunc("/questions", questionsHandler)
+	http.HandleFunc("/question", questionHandler)
+	http.HandleFunc("/answers", answersHandler)
 	http.HandleFunc("/admin/db", adminDbHandler)
 	http.HandleFunc("/admin/sessions", adminSessionsHandler)
 	http.HandleFunc("/admin/editteacher", editteacherHandler)
@@ -209,6 +220,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			panic(err)
 		}
+		defer rows.Close()
 
 		if rows.Next() {
 			http.Error(w, "Usarname already taken", http.StatusForbidden)
@@ -279,6 +291,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+		defer rows.Close()
 
 		if rows.Next() {
 			err = scanUser(rows, &u)
@@ -510,6 +523,7 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	defer rows.Close()
 
 	var s models.Sessions
 
@@ -599,6 +613,7 @@ func editteacherHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, "Can't select user", http.StatusInternalServerError)
 		}
+		defer rows.Close()
 
 		if rows.Next() {
 			err = scanUser(rows, &u)
@@ -654,6 +669,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+		defer rows.Close()
 
 		if rows.Next() {
 			err = scanUser(rows, &u)
@@ -950,7 +966,7 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&q.ID, &q.Question, &q.Type, &q.Score, &q.DateCteated, &q.LevelID, &l.Name)
+		err = scanQuestion(rows, &q, &l)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -964,6 +980,126 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 
 
 	err = tpl.ExecuteTemplate(w, "questions.gohtml", td)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+}
+
+func answersHandler(w http.ResponseWriter, r *http.Request)  {
+
+	var td models.TplAnswers
+	var a models.Answers
+	var q models.Questions
+	var l models.Levels
+	var action string
+
+	action = r.FormValue("action")
+
+	var err error
+
+	switch action {
+	case "edit":
+
+		q.ID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestionByID), q.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		if rows.Next() {
+			scanQuestion(rows, &q, &l)
+		}
+
+		rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByID))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		defer rows.Close()
+
+
+		for rows.Next() {
+			err = rows.Scan(&a.ID, &a.Answer, &a.Correct, &a.DateCteated)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+			td.Answers = append(td.Answers, a)
+		}
+	}
+
+	tpl.ExecuteTemplate(w, "answers.gohtml", td)
+
+}
+
+func questionHandler(w http.ResponseWriter, r *http.Request) {
+
+	var td models.TplQuestion
+	var action string
+	var q models.Questions
+	var l models.Levels
+	var a models.Answers
+	var i int
+
+	td.Edit = false
+	td.QuestionTypes = questionTypes
+
+	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		rows.Scan(&l.ID, &l.Name, &l.Score)
+		td.Levels = append(td.Levels, l)
+	}
+
+	action = r.FormValue("action")
+	if action == "edit" {
+
+		id, err := strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestionByID), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		defer rows.Close()
+
+		if rows.Next() {
+			err = scanQuestion(rows, &q, &l)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
+		td.Edit = true
+		td.Question = q
+
+		rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByID), q.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		for rows.Next() {
+			err = rows.Scan(&a.ID, &a.Answer, &a.Correct, &a.DateCteated)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+			i++
+			td.AnswerRows = append(td.AnswerRows, models.AnswerRow{i, a})
+		}
+	}
+
+	err = tpl.ExecuteTemplate(w, "question.gohtml", td)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

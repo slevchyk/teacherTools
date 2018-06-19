@@ -17,3 +17,11 @@ func scanTeacher(rows *sql.Rows, t *models.Teachers, u *models.Users, l *models.
 	return err
 
 }
+
+func scanQuestion(rows *sql.Rows, q *models.Questions, l *models.Levels) error {
+
+	err := rows.Scan(&q.ID, &q.Question, &q.Type, &q.Score, &q.DateCteated, &q.LevelID, &l.Name)
+	return err
+}
+
+

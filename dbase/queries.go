@@ -10,7 +10,9 @@ const (
 	STeacherByID          = "SelectTeacherByID"
 	STeacherByUserID      = "SelectTeacherByUserID"
 	SStudentsByTeacher    = "SelectStudentsByTeacher"
-	SelectQuestions = "SelectQuestions"
+	SelectQuestions       = "SelectQuestions"
+	SelectQuestionByID    = "SelectQuestionByID"
+	SelectAnswersByID     = "SelectAnswersByID"
 	SLevels               = "SelectLevels"
 	IUser                 = "InsertUser"
 	ISession              = "InsertSession"
@@ -117,7 +119,7 @@ func GetQuery(QryID string) string {
 		result = `
 			select
 				t.id,
-				t.levelid,
+				t.levelid
 			from teachers t
 			where
 				t.userid = $1;`
@@ -126,7 +128,7 @@ func GetQuery(QryID string) string {
 			select
 				s.id,
 				s.userid,
-				s.levelid,
+				s.levelid
 			from students s
 			where
 				s.teacherid = $1;`
@@ -147,6 +149,35 @@ func GetQuery(QryID string) string {
   				l.score,
   				q.type,
 				q.datecreated;`
+	case SelectQuestionByID:
+		result = `
+			select
+  				q.id,
+  				q.question,
+  				q.type,
+  				q.score,
+  				q.datecreated,
+  				q.levelid,
+  				l.name
+			from questions q
+  				left join levels l
+    				on q.levelid = l.id
+			where
+				q.id = $1
+			order by
+  				l.score,
+  				q.type,
+				q.datecreated;`
+	case SelectAnswersByID:
+		result = `
+			select
+				a.id,
+				a.answer,
+				a.correct,
+				a.datecreated
+			from answers a
+			where
+				a.questionid = $1`
 	case SLevels:
 		result = `
 			select
