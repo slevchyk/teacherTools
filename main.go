@@ -42,19 +42,8 @@ var questionTypes = map[string]string{
 	"qTypeChooseCorrectTranslation": "Choose the correct translation",
 	"qTypeSelectMissingWord": "Select the missing word",
 }
-//var userTypes = map[string]string{
-//	"a": "admin",
-//	"t": "teacher",
-//	"s": "student",
-//	"p": "parents",
-//}
 
-const sessionLenght int = 300
-
-const (
-	qTypeChooseCorrectTranslation = "Choose the correct translation"
-	qTypeSelectMissingWord = "Select the missing word"
-)
+const sessionLenght = 300
 
 func init() {
 	var err error
@@ -484,7 +473,7 @@ func initDb(w http.ResponseWriter, r *http.Request) {
 
 func initDbErrors(w http.ResponseWriter, r *http.Request, key string, err string) {
 
-	te := tplErr{key, err}
+	te := tplErr{Name:key, Value:err}
 
 	td.Err = nil
 	td.Err = append(td.Err, te)
@@ -543,7 +532,7 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		i++
-		ts = append(ts, row{i, s})
+		ts = append(ts, row{Number: i, Session: s})
 	}
 
 	err = tpl.ExecuteTemplate(w, "sessions.gohtml", ts)
@@ -972,7 +961,7 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 		}
 
 		i++
-		sr = append(sr, models.QuestionsRow{i, q, l})
+		sr = append(sr, models.QuestionsRow{Number: i, Question: q, Level: l})
 	}
 
 	td.Rows = sr
@@ -1012,7 +1001,10 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 		}
 
 		if rows.Next() {
-			scanQuestion(rows, &q, &l)
+			err = scanQuestion(rows, &q, &l)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 		}
 
 		rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByID))
@@ -1032,7 +1024,10 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 		}
 	}
 
-	tpl.ExecuteTemplate(w, "answers.gohtml", td)
+	err = tpl.ExecuteTemplate(w, "answers.gohtml", td)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
 }
 
@@ -1055,7 +1050,10 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	for rows.Next() {
-		rows.Scan(&l.ID, &l.Name, &l.Score)
+		err = rows.Scan(&l.ID, &l.Name, &l.Score)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		td.Levels = append(td.Levels, l)
 	}
 
@@ -1095,7 +1093,7 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			i++
-			td.AnswerRows = append(td.AnswerRows, models.AnswerRow{i, a})
+			td.AnswerRows = append(td.AnswerRows, models.AnswerRow{Number: i, Answer: a})
 		}
 	}
 
