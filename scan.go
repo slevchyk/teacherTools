@@ -20,8 +20,12 @@ func scanTeacher(rows *sql.Rows, t *models.Teachers, u *models.Users, l *models.
 
 func scanQuestion(rows *sql.Rows, q *models.Questions, l *models.Levels) error {
 
-	err := rows.Scan(&q.ID, &q.Question, &q.Type, &q.Score, &q.DateCteated, &q.LevelID, &l.Name)
+	err := rows.Scan(&q.ID, &q.Name, &q.Type, &q.Score, &q.DateCteated, &q.LevelID, &l.Name)
 	return err
 }
 
+func scanAnswers(rows *sql.Rows, a *models.Answers) error {
 
+	err := rows.Scan(&a.ID, &a.Name, &a.Correct, &a.DateCreated, &a.QuestionsID)
+	return err
+}

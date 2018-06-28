@@ -25,7 +25,7 @@ type Sessions struct {
 	UserAgent    string
 }
 
-//Levels is a struct of table levels
+//Level is a struct of table levels
 type Levels struct {
 	ID    int
 	Name  string
@@ -35,7 +35,7 @@ type Levels struct {
 //Questions is a struct of table questions
 type Questions struct {
 	ID          int
-	Question    string
+	Name        string
 	Type        string
 	Score       float32
 	DateCteated time.Time
@@ -43,12 +43,12 @@ type Questions struct {
 	TeacherID   int
 }
 
-//Answers is a struct of table answers
+//Rows is a struct of table answers
 type Answers struct {
 	ID          int
-	Answer      string
+	Name        string
 	Correct     bool
-	DateCteated time.Time
+	DateCreated time.Time
 	QuestionsID int
 	TeacherID   int
 }

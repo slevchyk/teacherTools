@@ -50,7 +50,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="question">Question</label>
-                                    <textarea class="form-control" rows="4" id="question" required="" placeholder="question..." name="question">{{if .Edit}}{{.Question.Question}}{{end}}</textarea>
+                                    <textarea class="form-control" rows="4" id="question" required="" placeholder="question..." name="question">{{if .Edit}}{{.Question.Name}}{{end}}</textarea>
                                 </div>
                                 <div class="form-group">
                                     <label for="score">Score</label>
@@ -96,11 +96,11 @@
                                     <tr>
                                         <td>{{.Number}}</td>
                                         <td>{{if eq .Answer.Correct true}} <i class="fa fa-check-circle"></i>{{end}}</td>
-                                        <td>{{.Answer.Answer}}</td>
+                                        <td>{{.Answer.Name}}</td>
                                     </tr>
                                 {{end}}
                             </table>
-                            <a href="/answers?action=edit&id={{.Question.ID}}" class="btn btn-outline-info float-right"><i class="fa fa-edit"></i> Edit</a>
+                            <a href="/answers?qid={{.Question.ID}}" class="btn btn-outline-info float-right"><i class="fa fa-edit"></i> Edit</a>
                         </div>
                     </div>
                     <!-- /form card answers -->

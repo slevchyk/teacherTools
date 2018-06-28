@@ -313,7 +313,7 @@ func adminDbHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch action {
 		case "init":
-			initDb(w, r)
+			dbase.InitDB(db, w, r)
 		}
 	}
 
@@ -321,170 +321,6 @@ func adminDbHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-}
-
-func initDb(w http.ResponseWriter, r *http.Request) {
-
-	clearTplData()
-
-	var err error
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
-				id serial PRIMARY KEY,
-				email text NOT NULL UNIQUE,
-				password bytea NOT NULL,
-				firstName text,
-				lastName text,
-				type char(100),
-				userpic char(100))`)
-
-	if err != nil {
-		initDbErrors(w, r, "create users table", err.Error())
-		return
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS sessions (
-				id serial PRIMARY KEY,
-				uuid text,
-				userId int references users(ID),
-				lastActivity timestamp with time zone,
-				ip text,
-				userAgent text)`)
-
-	if err != nil {
-		initDbErrors(w, r, "create sessions table", err.Error())
-		return
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS levels (
-				id serial PRIMARY KEY,
-				name text NOT NULL UNIQUE,
-				score text)`)
-
-	if err != nil {
-		initDbErrors(w, r, "create levels table", err.Error())
-		return
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS teachers (
-				id serial PRIMARY KEY,
-				active boolean DEFAULT TRUE NOT NULL,
-				userId int references users(ID) NOT NULL,
-				levelId int references levels(ID) NOT NULL)`)
-
-	if err != nil {
-		initDbErrors(w, r, "create teachers table", err.Error())
-		return
-	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS students (
-				id serial PRIMARY KEY,
-				active boolean DEFAULT TRUE NOT NULL,
-				userId int references users(ID) NOT NULL,
-				teacherId int references teachers(ID) NOT NULL,
-				levelId int references levels(ID) NOT NULL)`)
-
-	if err != nil {
-		initDbErrors(w, r, "create students table", err.Error())
-		return
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS parents (
-				id serial PRIMARY KEY,
-				userId int references users(ID),
-				studentId int references students(ID))`)
-
-	if err != nil {
-		initDbErrors(w, r, "create parents table", err.Error())
-		return
-	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS questions (
-				id serial PRIMARY KEY,
-				question text,
-				type text,
-				score real,
-				datecreated timestamp,
-	  			levelId int references levels(ID),
-				teacherId int references teachers(ID))`)
-
-	if err != nil {
-		initDbErrors(w, r, "create questions table", err.Error())
-		return
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS answers (
-				id serial PRIMARY KEY,
-				answer text,
-				correct boolean,
-				datecreated timestamp,
-				questionId int references questions(ID),
-	  			teacherId int references teachers(ID))`)
-
-	if err != nil {
-		initDbErrors(w, r, "create answers table", err.Error())
-		return
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS hometasks (
-				id serial PRIMARY KEY,
-				score real,
-				dateStarted text,
-				dateCompleted timestamp,
-				levelId int references levels(ID),
-				studentId int references students(ID),
-	  			teacherId int references teachers(ID))`)
-
-	if err != nil {
-		initDbErrors(w, r, "create hometasks table", err.Error())
-		return
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS hometaskspecs (
-				id serial PRIMARY KEY,
-				answer text,				
-				date timestamp,
-				questionId int references questions(ID),
-				hometaskId int references hometasks(ID),				
-	  			teacherId int references teachers(ID))`)
-
-	if err != nil {
-		initDbErrors(w, r, "create hometaskspecs table", err.Error())
-		return
-	}
-
-	rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), "admin")
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		encryptedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.MinCost)
-		_, err = db.Exec(dbase.GetQuery(dbase.IUser), "admin@domain.com", encryptedPassword, "Root", "User", "admin")
-		fmt.Println(err)
-	}
-
-	td.SysMsg = `Init db completed.
-				Created user with admins permissions
-				Email: admin
-				Password: password`
-
-	http.Redirect(w, r, "/admin/db", http.StatusSeeOther)
-}
-
-func initDbErrors(w http.ResponseWriter, r *http.Request, key string, err string) {
-
-	te := tplErr{Name:key, Value:err}
-
-	td.Err = nil
-	td.Err = append(td.Err, te)
-
-	http.Redirect(w, r, "/admin/db", http.StatusSeeOther)
-}
-
-func clearTplData() {
-
-	td.SysMsg = ""
-	td.Err = nil
 }
 
 func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -960,6 +796,9 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
+		//change question type key to alias
+		q.Type = questionTypes[q.Type]
+
 		i++
 		sr = append(sr, models.QuestionsRow{Number: i, Question: q, Level: l})
 	}
@@ -969,62 +808,6 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 
 
 	err = tpl.ExecuteTemplate(w, "questions.gohtml", td)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-}
-
-func answersHandler(w http.ResponseWriter, r *http.Request)  {
-
-	var td models.TplAnswers
-	var a models.Answers
-	var q models.Questions
-	var l models.Levels
-	var action string
-
-	action = r.FormValue("action")
-
-	var err error
-
-	switch action {
-	case "edit":
-
-		q.ID, err = strconv.Atoi(r.FormValue("id"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestionByID), q.ID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		if rows.Next() {
-			err = scanQuestion(rows, &q, &l)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
-
-		rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByID))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		defer rows.Close()
-
-
-		for rows.Next() {
-			err = rows.Scan(&a.ID, &a.Answer, &a.Correct, &a.DateCteated)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-
-			td.Answers = append(td.Answers, a)
-		}
-	}
-
-	err = tpl.ExecuteTemplate(w, "answers.gohtml", td)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -1081,13 +864,13 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 		td.Edit = true
 		td.Question = q
 
-		rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByID), q.ID)
+		rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByQuestionID), q.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		for rows.Next() {
-			err = rows.Scan(&a.ID, &a.Answer, &a.Correct, &a.DateCteated)
+			err = scanAnswers(rows, &a)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -1098,6 +881,118 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = tpl.ExecuteTemplate(w, "question.gohtml", td)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+}
+
+func answersHandler(w http.ResponseWriter, r *http.Request)  {
+
+	var td models.TplAnswers
+	var a models.Answers
+	var q models.Questions
+	var l models.Levels
+	var action string
+	var err error
+	var i int
+
+	q.ID, err = strconv.Atoi(r.FormValue("qid"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	action = r.FormValue("action")
+
+	switch action {
+	case "edit":
+
+		td.AnswerID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+	case "update":
+
+		a.ID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		a.Name = r.FormValue("name")
+
+		correct := r.FormValue("correct")
+		if correct == "true" {
+			a.Correct = true
+		} else {
+			a.Correct = false
+		}
+
+		_, err := db.Query(dbase.GetQuery(dbase.UpdateAnswer), a.ID, a.Name, a.Correct)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		url := "answers?qid=" + strconv.Itoa(q.ID)
+		http.Redirect(w, r, url, http.StatusSeeOther)
+
+	case "add":
+
+		a.Name = r.FormValue("name")
+
+		correct := r.FormValue("correct")
+		if correct == "true" {
+			a.Correct = true
+		} else {
+			a.Correct = false
+		}
+
+		a.DateCreated = time.Now()
+
+		_, err = db.Query(dbase.GetQuery(dbase.InsertAnswer), a.Name, a.Correct, a.DateCreated, q.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		url := "answers?qid=" + strconv.Itoa(q.ID)
+		http.Redirect(w, r, url, http.StatusSeeOther)
+	}
+
+	rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestionByID), q.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err = scanQuestion(rows, &q, &l)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+
+	td.Question = q
+	td.Level = l
+
+
+	rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByQuestionID), q.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	defer rows.Close()
+
+
+	for rows.Next() {
+		err = scanAnswers(rows, &a)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		i++
+		td.Rows = append(td.Rows, models.AnswerRow{i, a})
+	}
+
+	err = tpl.ExecuteTemplate(w, "answers.gohtml", td)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

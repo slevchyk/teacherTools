@@ -2,26 +2,28 @@ package dbase
 
 //Query names for function GetQuery
 const (
-	SUserBySessionID      = "SelectUserBySessionID"
-	SUserByEmail          = "SelectUserByEmail"
-	SUserByID             = "SelectUserByID"
-	SSessions             = "SelectSessions"
-	STeachers             = "SelectTeachers"
-	STeacherByID          = "SelectTeacherByID"
-	STeacherByUserID      = "SelectTeacherByUserID"
-	SStudentsByTeacher    = "SelectStudentsByTeacher"
-	SelectQuestions       = "SelectQuestions"
-	SelectQuestionByID    = "SelectQuestionByID"
-	SelectAnswersByID     = "SelectAnswersByID"
-	SLevels               = "SelectLevels"
-	IUser                 = "InsertUser"
-	ISession              = "InsertSession"
-	ITeacher              = "InsertTeacher"
-	ILevel                = "InsertLevel"
-	ULevel                = "UpadteLevel"
-	USessionsLastActivity = "UpdateSessionsLastActivity"
-	DSessionByID          = "DeleteSessionByID"
-	DSessionByUUID        = "DeleteSessionByUUID"
+	SUserBySessionID          = "SelectUserBySessionID"
+	SUserByEmail              = "SelectUserByEmail"
+	SUserByID                 = "SelectUserByID"
+	SSessions                 = "SelectSessions"
+	STeachers                 = "SelectTeachers"
+	STeacherByID              = "SelectTeacherByID"
+	STeacherByUserID          = "SelectTeacherByUserID"
+	SStudentsByTeacher        = "SelectStudentsByTeacher"
+	SelectQuestions           = "SelectQuestions"
+	SelectQuestionByID        = "SelectQuestionByID"
+	SelectAnswersByQuestionID = "SelectAnswersByQuestionID"
+	SLevels                   = "SelectLevels"
+	IUser                     = "InsertUser"
+	ISession                  = "InsertSession"
+	ITeacher                  = "InsertTeacher"
+	ILevel                    = "InsertLevel"
+	InsertAnswer				= "InsertAnswer"
+	ULevel                    = "UpadteLevel"
+	USessionsLastActivity     = "UpdateSessionsLastActivity"
+	UpdateAnswer			= "UpdateAnswer"
+	DSessionByID              = "DeleteSessionByID"
+	DSessionByUUID            = "DeleteSessionByUUID"
 )
 
 //GetQuery function return query text by query name (u can use const from this pkg)
@@ -36,8 +38,8 @@ func GetQuery(QryID string) string {
 				u.id,
 				u.email,
 				u.password,
-				u.firstname,
-				u.lastname,
+				u.first_name,
+				u.last_name,
 				u.type,
 				u.userpic
 			from users u
@@ -49,8 +51,8 @@ func GetQuery(QryID string) string {
 				u.id,
 				u.email,
 				u.password,
-				u.firstname,
-				u.lastname,
+				u.first_name,
+				u.last_name,
 				u.type,
 				u.userpic
 			from users u
@@ -62,13 +64,13 @@ func GetQuery(QryID string) string {
   				u.id,
 				u.email,
 				u.password,
-				u.firstname,
-				u.lastname,
+				u.first_name,
+				u.last_name,
 				u.type,
 				u.userpic
 			from sessions s
   				left join users u
-					on s.userid = u.id
+					on s.user_id = u.id
 			where
 				s.uuid = $1;`
 	case SSessions:
@@ -76,59 +78,59 @@ func GetQuery(QryID string) string {
 			select
 				s.id,
 				s.uuid,
-				s.userid,
-				s.lastactivity,
+				s.user_id,
+				s.last_activity,
 				s.ip,
-				s.useragent
+				s.user_agent
 			from sessions s;`
 	case STeachers:
 		result = `
 			select
   				t.id,
   				t.active,
-				t.levelid,
+				t.level_id,
   				l.name,
   				u.email,
-  				u.firstname,
-  				u.lastname,
+  				u.first_name,
+  				u.last_name,
   				case when u.userpic is null then 'defaultuserpic.png' end as userpic
 			from teachers t
   			left join users u
-    			on t.userid = u.id
+    			on t.user_id = u.id
   			left join levels l
-    			on t.levelid = l.id;`
+    			on t.level_id = l.id;`
 	case STeacherByID:
 		result = `
 			select
   				t.id,
   				t.active,
-				t.levelid,
+				t.level_id,
   				l.name,
   				u.email,
-  				u.firstname,
-  				u.lastname,
+  				u.first_name,
+  				u.last_name,
   				case when u.userpic is null then 'defaultuserpic.png' end as userpic
 			from teachers t
   			left join users u
-    			on t.userid = u.id
+    			on t.user_id = u.id
   			left join levels l
-    			on t.levelid = l.id
+    			on t.level_id = l.id
 			where
 				t.id = $1;`
 	case STeacherByUserID:
 		result = `
 			select
 				t.id,
-				t.levelid
+				t.level_id
 			from teachers t
 			where
-				t.userid = $1;`
+				t.user_id = $1;`
 	case SStudentsByTeacher:
 		result = `
 			select
 				s.id,
-				s.userid,
-				s.levelid
+				s.user_id,
+				s.level_id
 			from students s
 			where
 				s.teacherid = $1;`
@@ -136,48 +138,52 @@ func GetQuery(QryID string) string {
 		result = `
 			select
   				q.id,
-  				q.question,
+  				q.name,
   				q.type,
   				q.score,
-  				q.datecreated,
-  				q.levelid,
+  				q.created_at,
+  				q.level_id,
   				l.name
 			from questions q
   				left join levels l
-    				on q.levelid = l.id
+    				on q.level_id = l.id
 			order by
   				l.score,
   				q.type,
-				q.datecreated;`
+				q.created_at;`
 	case SelectQuestionByID:
 		result = `
 			select
   				q.id,
-  				q.question,
+  				q.name,
   				q.type,
   				q.score,
-  				q.datecreated,
-  				q.levelid,
+  				q.created_at,
+  				q.level_id,
   				l.name
 			from questions q
   				left join levels l
-    				on q.levelid = l.id
+    				on q.level_id = l.id
 			where
 				q.id = $1
 			order by
   				l.score,
   				q.type,
-				q.datecreated;`
-	case SelectAnswersByID:
+				q.created_at;`
+	case SelectAnswersByQuestionID:
 		result = `
 			select
-				a.id,
-				a.answer,
-				a.correct,
-				a.datecreated
-			from answers a
+  				a.id,
+  				a.name,
+ 				a.correct,
+  				a.created_at,
+  				a.question_id  				
+			from answers a  				
 			where
-				a.questionid = $1`
+  				a.question_id = $1
+			order by
+				a.correct desc,
+				a.name`
 	case SLevels:
 		result = `
 			select
@@ -192,8 +198,8 @@ func GetQuery(QryID string) string {
 			insert into users
 				(email,
    				password,
-   				firstname,
-   				lastname,
+   				first_name,
+   				last_name,
    				type,
 				userpic)
 			values ($1, $2, $3, $4, $5, $6);`
@@ -201,17 +207,25 @@ func GetQuery(QryID string) string {
 		result = `
 			insert into sessions
 				(uuid,
-   				userid,
-   				lastactivity,
+   				user_id,
+   				last_activity,
 				ip,
-				useragent)
+				user_agent)
 			values ($1, $2, $3, $4, $5);`
 	case ITeacher:
 		result = `
 			insert into teachers
-				(userid,
-   				levelid)
+				(user_id,
+   				level_id)
 			values ($1, $2);`
+	case InsertAnswer:
+		result = `
+			insert into answers
+				(name,
+   				correct,
+				created_at,
+				question_id)
+			values ($1, $2, $3, $4);`
 	case ILevel:
 		result = `
 			insert into levels
@@ -229,6 +243,14 @@ func GetQuery(QryID string) string {
 			set
 				name=$2,
 				score=$3
+			where
+				id=$1`
+	case UpdateAnswer:
+		result = `
+			update answers
+			set				
+				name=$2,
+				correct=$3
 			where
 				id=$1`
 	case DSessionByID:

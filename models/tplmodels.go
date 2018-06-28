@@ -34,11 +34,6 @@ type TplQuestions struct {
 	Rows              []QuestionsRow
 }
 
-type AnswerRow struct {
-	Number int
-	Answer Answers
-}
-
 type TplQuestion struct {
 	Edit bool
 	Question Questions
@@ -48,8 +43,14 @@ type TplQuestion struct {
 	QuestionTypes map[string]string
 }
 
+type AnswerRow struct {
+	Number int
+	Answer Answers
+}
+
 type TplAnswers struct{
 	Question Questions
-	Levels Levels
-	Answers []Answers
+	Level    Levels
+	AnswerID int
+	Rows     []AnswerRow
 }

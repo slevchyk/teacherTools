@@ -1,45 +1,66 @@
-{{ define "answers" }}
+{{ template "header"}}
+
 
 <div class="container">
+    {{if .}}
+        <div class="row">
+            <a href="/question?action=edit&id={{.Question.ID}}"><h2>{{.Question.Name}}</h2></a>
+        </div>
+        <div class="row">
+            <h6>{{.Level.Name}}</h6>
+        </div>
+    {{end}}
     <div class="row">
         <table class="table table-striped">
             <thead class="thead-dark">
-            <tr>
-                <th scope="col">#</th>
-                <th scope="col">correct</th>
-                <th scope="col">answer</th>
-                <th scope="col">manage</th>
-            </tr>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">correct</th>
+                    <th scope="col">answer</th>
+                    <th scope="col">manage</th>
+                </tr>
             </thead>
 
-            {{range .AnswerRows}}
-                <tr>
-                    <form  method="post">
+        {{if .}}
+            {{$AnswerID := .AnswerID}}
+            {{$QuestionID := .Question.ID}}
+
+            {{range .Rows}}
+                {{if eq .Answer.ID $AnswerID}}
+                    <form action="answers?qid={{$QuestionID}}&action=update&id={{.Answer.ID}}" method="post">
                         <td>{{.Number}}</td>
                         <td>
-                            <input type="checkbox" class="form-control" id="correct" name="correct" {{if eq .Answer.Correct true}}checked{{end}}>
+                            <input type="checkbox" class="form-control" id="correct" value="true" name="correct" {{if eq .Answer.Correct true}}checked{{end}}>
                         </td>
                         <td>
-                            <input type="text" class="form-control" name="answer" id="answer" required placeholder="score" value="{{.Answer.Answer}}">
+                            <input type="text" class="form-control" name="name" id="name" required placeholder="name" value="{{.Answer.Name}}">
                         </td>
                         <td>
-                            <a href="/answers?action=edit&id={{.Question.ID}}&answer=edit&answerid={{.Answer.ID}}" class="btn btn-outline-info"><i class="fa fa-edit"></i> Edit</a>
+                            <button type="submit" class="btn btn-outline-primary"><i class="fa fa-save"></i> Save</button>
                         </td>
                     </form>
-                </tr>
+                {{else}}
+                    <tr>
+                        <td>{{.Number}}</td>
+                        <td>{{if eq .Answer.Correct true}} <i class="fa fa-check-circle"></i>{{end}}</td>
+                        <td>{{.Answer.Name}}</td>
+                        <td><a href="/answers?qid={{$QuestionID}}&action=edit&id={{.Answer.ID}}" class="btn btn-outline-info"><i class="fa fa-edit"></i> Edit</a></td>
+                    </tr>
+                {{end}}
             {{end}}
+        {{end}}
 
             <tr>
-                <form method="post">
+                <form action="answers?qid={{.Question.ID}}&action=add" method="post">
                     <td></td>
                     <td>
-                        <input type="checkbox" class="form-control" name="correct" id="correct">
+                        <input type="checkbox" class="form-control" id="correct" name="correct" value="true">
                     </td>
                     <td>
-                        <input type="text" class="form-control" name="answer" id="answer" required placeholder="answer...">
+                        <input type="text" class="form-control" name="name" id="name" required placeholder="answer">
                     </td>
                     <td>
-                        <a href="/answers?action=edit&id={{.Question.ID}}&answer=create" class="btn btn-outline-info"><i class="fa fa-edit"></i> Add</a>
+                        <button type="submit" class="btn btn-primary"><i class="fa fa-plus-square"></i> Add</button>
                     </td>
                 </form>
             </tr>
@@ -47,4 +68,4 @@
     </div>
 </div>
 
-{{ end }}
+{{ template "footer" }}

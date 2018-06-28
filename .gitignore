@@ -41,6 +41,7 @@ debug
 #other
 node_modules/
 bower_components/
+public/userpics/
 .tmp
 .sass-cache
 builds/**/images/*
@@ -49,6 +50,7 @@ builds/**/images/*
 *.mp4
 *.png
 *.jpeg
+*.jpg
 
 # security / ssl
 *.pem
