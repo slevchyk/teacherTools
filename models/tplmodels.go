@@ -45,12 +45,13 @@ type TplQuestion struct {
 
 type AnswerRow struct {
 	Number int
+	Deleted bool
 	Answer Answers
 }
 
 type TplAnswers struct{
-	Question Questions
-	Level    Levels
-	AnswerID int
-	Rows     []AnswerRow
+	Question   Questions
+	Level      Levels
+	AnswerID   int
+	AnswerRows []AnswerRow
 }

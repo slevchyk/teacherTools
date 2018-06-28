@@ -25,9 +25,9 @@
             {{$AnswerID := .AnswerID}}
             {{$QuestionID := .Question.ID}}
 
-            {{range .Rows}}
+            {{range .AnswerRows}}
                 {{if eq .Answer.ID $AnswerID}}
-                    <form action="answers?qid={{$QuestionID}}&action=update&id={{.Answer.ID}}" method="post">
+                    <form action="answers?qid={{$QuestionID}}&do=update&id={{.Answer.ID}}" method="post">
                         <td>{{.Number}}</td>
                         <td>
                             <input type="checkbox" class="form-control" id="correct" value="true" name="correct" {{if eq .Answer.Correct true}}checked{{end}}>
@@ -36,22 +36,32 @@
                             <input type="text" class="form-control" name="name" id="name" required placeholder="name" value="{{.Answer.Name}}">
                         </td>
                         <td>
-                            <button type="submit" class="btn btn-outline-primary"><i class="fa fa-save"></i> Save</button>
+                            <button type="submit" class="btn btn-outline-info"><i class="fa fa-save"></i> Save</button>
+                            <a href="/answers?qid={{$QuestionID}}&do=delete&id={{.Answer.ID}}" class="btn btn-outline-info"><i class="fa fa-trash-alt"></i> Delete</a>
                         </td>
                     </form>
                 {{else}}
-                    <tr>
-                        <td>{{.Number}}</td>
-                        <td>{{if eq .Answer.Correct true}} <i class="fa fa-check-circle"></i>{{end}}</td>
-                        <td>{{.Answer.Name}}</td>
-                        <td><a href="/answers?qid={{$QuestionID}}&action=edit&id={{.Answer.ID}}" class="btn btn-outline-info"><i class="fa fa-edit"></i> Edit</a></td>
-                    </tr>
+                    {{if eq .Deleted false}}
+                        <tr>
+                            <td>{{.Number}}</td>
+                            <td>{{if eq .Answer.Correct true}} <i class="fa fa-check-circle"></i>{{end}}</td>
+                            <td>{{.Answer.Name}}</td>
+                            <td><a href="/answers?qid={{$QuestionID}}&do=edit&id={{.Answer.ID}}" class="btn btn-outline-info"><i class="fa fa-edit"></i> Edit</a></td>
+                        </tr>
+                    {{else}}
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td><s>{{.Answer.Name}}</s></td>
+                            <td><a href="/answers?qid={{$QuestionID}}&do=restore&id={{.Answer.ID}}" class="btn btn-outline-info"><i class="fa fa-save"></i> Restore</a></td>
+                        </tr>
+                    {{end}}
                 {{end}}
             {{end}}
         {{end}}
 
             <tr>
-                <form action="answers?qid={{.Question.ID}}&action=add" method="post">
+                <form action="answers?qid={{.Question.ID}}&do=add" method="post">
                     <td></td>
                     <td>
                         <input type="checkbox" class="form-control" id="correct" name="correct" value="true">

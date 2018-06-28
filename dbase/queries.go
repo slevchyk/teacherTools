@@ -18,10 +18,11 @@ const (
 	ISession                  = "InsertSession"
 	ITeacher                  = "InsertTeacher"
 	ILevel                    = "InsertLevel"
-	InsertAnswer				= "InsertAnswer"
+	InsertAnswer              = "InsertAnswer"
 	ULevel                    = "UpadteLevel"
 	USessionsLastActivity     = "UpdateSessionsLastActivity"
-	UpdateAnswer			= "UpdateAnswer"
+	UpdateAnswer              = "UpdateAnswer"
+	UpdateAnswerDeletedAt   = "UpdateAnswerDeletedAt"
 	DSessionByID              = "DeleteSessionByID"
 	DSessionByUUID            = "DeleteSessionByUUID"
 )
@@ -176,12 +177,14 @@ func GetQuery(QryID string) string {
   				a.id,
   				a.name,
  				a.correct,
-  				a.created_at,
-  				a.question_id  				
+  				a.created_at,				
+  				a.question_id,
+				a.deleted_at
 			from answers a  				
 			where
   				a.question_id = $1
 			order by
+				a.deleted_at desc,
 				a.correct desc,
 				a.name`
 	case SLevels:
@@ -251,6 +254,14 @@ func GetQuery(QryID string) string {
 			set				
 				name=$2,
 				correct=$3
+			where
+				id=$1`
+	case UpdateAnswerDeletedAt:
+		result = `
+			update answers
+			set		
+				correct=false,
+				deleted_at=$2				
 			where
 				id=$1`
 	case DSessionByID:

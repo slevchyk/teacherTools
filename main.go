@@ -805,8 +805,6 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 
 	td.Rows = sr
 
-
-
 	err = tpl.ExecuteTemplate(w, "questions.gohtml", td)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -893,7 +891,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 	var a models.Answers
 	var q models.Questions
 	var l models.Levels
-	var action string
+	var do string
 	var err error
 	var i int
 
@@ -902,9 +900,9 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	action = r.FormValue("action")
+	do = r.FormValue("do")
 
-	switch action {
+	switch do {
 	case "edit":
 
 		td.AnswerID, err = strconv.Atoi(r.FormValue("id"))
@@ -947,9 +945,39 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 			a.Correct = false
 		}
 
-		a.DateCreated = time.Now()
+		a.CreatedAt = time.Now().UTC()
 
-		_, err = db.Query(dbase.GetQuery(dbase.InsertAnswer), a.Name, a.Correct, a.DateCreated, q.ID)
+		_, err = db.Query(dbase.GetQuery(dbase.InsertAnswer), a.Name, a.Correct, a.CreatedAt, q.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		url := "answers?qid=" + strconv.Itoa(q.ID)
+		http.Redirect(w, r, url, http.StatusSeeOther)
+
+	case "delete":
+
+		a.ID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		_, err = db.Query(dbase.GetQuery(dbase.UpdateAnswerDeletedAt), a.ID, time.Now().UTC())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		url := "answers?qid=" + strconv.Itoa(q.ID)
+		http.Redirect(w, r, url, http.StatusSeeOther)
+
+	case "restore":
+
+		a.ID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		_, err = db.Query(dbase.GetQuery(dbase.UpdateAnswerDeletedAt), a.ID, nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -989,7 +1017,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 		}
 
 		i++
-		td.Rows = append(td.Rows, models.AnswerRow{i, a})
+		td.AnswerRows = append(td.AnswerRows, models.AnswerRow{Number:i, Deleted:a.DeletedAt.Valid, Answer:a})
 	}
 
 	err = tpl.ExecuteTemplate(w, "answers.gohtml", td)

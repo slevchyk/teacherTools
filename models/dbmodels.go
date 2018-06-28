@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+	"github.com/lib/pq"
 )
 
 //Users is a struct of table users
@@ -34,23 +35,24 @@ type Levels struct {
 
 //Questions is a struct of table questions
 type Questions struct {
-	ID          int
-	Name        string
-	Type        string
-	Score       float32
-	DateCteated time.Time
-	LevelID     int
-	TeacherID   int
+	ID        int
+	Name      string
+	Type      string
+	Score     float32
+	CreatedAt time.Time
+	DeletedAt time.Time
+	LevelID   int
+	TeacherID int
 }
 
-//Rows is a struct of table answers
+//AnswerRows is a struct of table answers
 type Answers struct {
 	ID          int
 	Name        string
 	Correct     bool
-	DateCreated time.Time
+	CreatedAt   time.Time
 	QuestionsID int
-	TeacherID   int
+	DeletedAt   pq.NullTime
 }
 
 //Hometasks is a struct of table hometasks
