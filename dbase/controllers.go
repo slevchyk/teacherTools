@@ -1,10 +1,12 @@
 package dbase
 
 import (
-	"net/http"
-	"golang.org/x/crypto/bcrypt"
-	"fmt"
 	"database/sql"
+	"fmt"
+	"net/http"
+
+	"github.com/slevchyk/teacherTools/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 //InitDB function for first database initialization
@@ -162,7 +164,7 @@ func InitDB(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	if !rows.Next() {
 		encryptedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.MinCost)
-		_, err = db.Exec(GetQuery(IUser), "admin@domain.com", encryptedPassword, "Root", "User", "admin")
+		_, err = db.Exec(GetQuery(IUser), "admin@domain.com", encryptedPassword, "Root", "User", models.UserTypeAdmin)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 

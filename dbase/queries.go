@@ -22,7 +22,8 @@ const (
 	ULevel                    = "UpadteLevel"
 	USessionsLastActivity     = "UpdateSessionsLastActivity"
 	UpdateAnswer              = "UpdateAnswer"
-	UpdateAnswerDeletedAt   = "UpdateAnswerDeletedAt"
+	UpdateAnswerDeletedAt     = "UpdateAnswerDeletedAt"
+	UpdateTeacherDeletedAt    = "UpdateTeacherDeletedAt"
 	DSessionByID              = "DeleteSessionByID"
 	DSessionByUUID            = "DeleteSessionByUUID"
 )
@@ -88,29 +89,35 @@ func GetQuery(QryID string) string {
 		result = `
 			select
   				t.id,
-  				t.active,
+				t.user_id,
 				t.level_id,
+  				t.deleted_at,				
   				l.name,
   				u.email,
   				u.first_name,
   				u.last_name,
-  				case when u.userpic is null then 'defaultuserpic.png' end as userpic
+  				case when u.userpic is null then 'defaultuserpic.png' else u.userpic end as userpic
 			from teachers t
   			left join users u
     			on t.user_id = u.id
   			left join levels l
-    			on t.level_id = l.id;`
+    			on t.level_id = l.id
+			order by
+				t.deleted_at desc,
+				u.first_name,
+				u.last_name;`
 	case STeacherByID:
 		result = `
 			select
   				t.id,
-  				t.active,
+				t.user_id,
 				t.level_id,
+  				t.deleted_at,				
   				l.name,
   				u.email,
   				u.first_name,
   				u.last_name,
-  				case when u.userpic is null then 'defaultuserpic.png' end as userpic
+  				case when u.userpic is null then 'defaultuserpic.png' else u.userpic end as userpic
 			from teachers t
   			left join users u
     			on t.user_id = u.id
@@ -261,6 +268,13 @@ func GetQuery(QryID string) string {
 			update answers
 			set		
 				correct=false,
+				deleted_at=$2				
+			where
+				id=$1`
+	case UpdateTeacherDeletedAt:
+		result = `
+			update teachers
+			set					
 				deleted_at=$2				
 			where
 				id=$1`

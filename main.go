@@ -1,24 +1,21 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"net/http"
+	"strconv"
+	"time"
+
 	"./dbase"
 	"./models"
-	"crypto/sha1"
-	"database/sql"
-	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/satori/go.uuid"
+	"github.com/slevchyk/teacherTools/utils"
 	"golang.org/x/crypto/bcrypt"
-	"html/template"
-	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
-	"encoding/json"
-	"encoding/base64"
 )
 
 type tplErr struct {
@@ -40,7 +37,7 @@ var lastSessionCleaned time.Time
 
 var questionTypes = map[string]string{
 	"qTypeChooseCorrectTranslation": "Choose the correct translation",
-	"qTypeSelectMissingWord": "Select the missing word",
+	"qTypeSelectMissingWord":        "Select the missing word",
 }
 
 const sessionLenght = 300
@@ -83,7 +80,6 @@ func main() {
 	http.HandleFunc("/answers", answersHandler)
 	http.HandleFunc("/admin/db", adminDbHandler)
 	http.HandleFunc("/admin/sessions", adminSessionsHandler)
-	http.HandleFunc("/admin/editteacher", editteacherHandler)
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic(err)
@@ -239,34 +235,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		ext := strings.Split(fh.Filename, ".")[1]
-		h := sha1.New()
-
-		_, err = io.Copy(h, mf)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		u.Userpic = fmt.Sprintf("%x", h.Sum(nil)) + "." + ext
-
-		wd, err := os.Getwd()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		path := filepath.Join(wd, "public", "userpics", u.Userpic)
-		nf, err := os.Create(path)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		defer nf.Close()
-
-		_, err = mf.Seek(0, 0)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		_, err = io.Copy(nf, mf)
+		u.Userpic, err = utils.UploadUserpic(mf, fh)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -377,97 +346,6 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func editteacherHandler(w http.ResponseWriter, r *http.Request) {
-
-	var sl = make(map[int]string)
-	var l models.Levels
-	var u models.Users
-	var t models.Teachers
-
-	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		err = rows.Scan(&l.ID, &l.Name, &l.Score)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		sl[l.ID] = l.Name
-	}
-
-	if r.Method == http.MethodPost {
-
-		l.ID, err = strconv.Atoi(r.FormValue("level"))
-		if err != nil {
-			panic(err)
-		}
-
-		u.Email = r.FormValue("email")
-		u.FirstName = r.FormValue("firstName")
-		u.LastName = r.FormValue("lastName")
-
-		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
-		if err != nil {
-			panic(err)
-		}
-		defer rows.Close()
-
-		if rows.Next() {
-			http.Error(w, "Usarname already taken", http.StatusInternalServerError)
-			return
-		}
-
-		password := r.FormValue("password")
-		encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
-		if err != nil {
-			http.Error(w, "Can't encrypt password", http.StatusInternalServerError)
-			return
-		}
-		u.Password = encryptedPassword
-
-		_, err = db.Query(dbase.GetQuery(dbase.IUser), u.Email, u.Password, u.FirstName, u.LastName, "teacher")
-		if err != nil {
-			http.Error(w, "Can't create user", http.StatusInternalServerError)
-			return
-		}
-
-		rows, err = db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
-		if err != nil {
-			http.Error(w, "Can't select user", http.StatusInternalServerError)
-		}
-		defer rows.Close()
-
-		if rows.Next() {
-			err = scanUser(rows, &u)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
-
-		if u.ID != 0 {
-
-			t.UserID = u.ID
-			t.LevelID = l.ID
-
-			_, err = db.Query(dbase.GetQuery(dbase.ITeacher), t.UserID, t.LevelID)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
-
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
-		return
-	}
-
-	err = tpl.ExecuteTemplate(w, "editteacher.gohtml", sl)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
 func userHandler(w http.ResponseWriter, r *http.Request) {
 
 	type tplData struct {
@@ -515,16 +393,8 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 
 func teachersHandler(w http.ResponseWriter, r *http.Request) {
 
-	type tplData struct {
-		Number  int
-		Teacher models.Teachers
-		User    models.Users
-		Level   models.Levels
-	}
-
-	var std []tplData
+	var td models.TplTeachers
 	var i int
-
 	var t models.Teachers
 	var u models.Users
 	var l models.Levels
@@ -542,10 +412,10 @@ func teachersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		i++
-		std = append(std, tplData{Number: i, Teacher: t, User: u, Level: l})
+		td.Rows = append(td.Rows, models.TeachersRow{Number: i, Deleted: t.DeletedAt.Valid, Teacher: t, User: u, Level: l})
 	}
 
-	err = tpl.ExecuteTemplate(w, "teacherslist.gohtml", std)
+	err = tpl.ExecuteTemplate(w, "teachers.gohtml", td)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -553,19 +423,13 @@ func teachersHandler(w http.ResponseWriter, r *http.Request) {
 
 func teacherHandler(w http.ResponseWriter, r *http.Request) {
 
-	type tplData struct {
-		View    bool
-		Teacher models.Teachers
-		User    models.Users
-		Level   models.Levels
-		Levels  []models.Levels
-	}
-
-	var td tplData
+	var td models.TplTeacher
+	var t models.Teachers
+	var u models.Users
 	var l models.Levels
-	var action string
+	var err error
 
-	td.View = false
+	td.Edit = false
 
 	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
 	if err != nil {
@@ -581,18 +445,16 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 		td.Levels = append(td.Levels, l)
 	}
 
-	action = r.FormValue("action")
-	if action == "view" {
+	do := r.FormValue("do")
+	switch do {
+	case "edit":
 
-		var t models.Teachers
-		var u models.Users
-
-		id, err := strconv.Atoi(r.FormValue("id"))
+		t.ID, err = strconv.Atoi(r.FormValue("id"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err = db.Query(dbase.GetQuery(dbase.STeacherByID), id)
+		rows, err = db.Query(dbase.GetQuery(dbase.STeacherByID), t.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -605,10 +467,108 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		td.View = true
+		td.Edit = true
+		td.Deleted = t.DeletedAt.Valid
 		td.Teacher = t
 		td.User = u
 		td.Level = l
+
+	case "add":
+
+		l.ID, err = strconv.Atoi(r.FormValue("level"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		u.Email = r.FormValue("email")
+		u.FirstName = r.FormValue("firstName")
+		u.LastName = r.FormValue("lastName")
+
+		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		defer rows.Close()
+
+		if rows.Next() {
+			http.Error(w, "Usarname already taken", http.StatusInternalServerError)
+		}
+
+		password := r.FormValue("password")
+		encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+		if err != nil {
+			http.Error(w, "Can't encrypt password", http.StatusInternalServerError)
+		}
+		u.Password = encryptedPassword
+
+		mf, fh, err := r.FormFile("userpic")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		u.Userpic, err = utils.UploadUserpic(mf, fh)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		_, err = db.Query(dbase.GetQuery(dbase.IUser), u.Email, u.Password, u.FirstName, u.LastName, models.UserTypeTeacher, u.Userpic)
+		if err != nil {
+			http.Error(w, "Can't create user", http.StatusInternalServerError)
+		}
+
+		rows, err = db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
+		if err != nil {
+			http.Error(w, "Can't select user", http.StatusInternalServerError)
+		}
+		defer rows.Close()
+
+		if rows.Next() {
+			err = scanUser(rows, &u)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
+		if u.ID != 0 {
+
+			t.UserID = u.ID
+			t.LevelID = l.ID
+
+			_, err = db.Query(dbase.GetQuery(dbase.ITeacher), t.UserID, t.LevelID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
+		http.Redirect(w, r, "/teachers", http.StatusSeeOther)
+
+	case "delete":
+
+		t.ID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		_, err = db.Query(dbase.GetQuery(dbase.UpdateTeacherDeletedAt), t.ID, time.Now().UTC())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		http.Redirect(w, r, "/teachers", http.StatusSeeOther)
+
+	case "restore":
+
+		t.ID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		_, err = db.Query(dbase.GetQuery(dbase.UpdateTeacherDeletedAt), t.ID, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		http.Redirect(w, r, "/teachers", http.StatusSeeOther)
 	}
 
 	err = tpl.ExecuteTemplate(w, "teacher.gohtml", td)
@@ -698,7 +658,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func questionsHandler(w http.ResponseWriter, r *http.Request)  {
+func questionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var td models.TplQuestions
 	var sr []models.QuestionsRow
@@ -732,7 +692,8 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 			c.MaxAge = -1
 			http.SetCookie(w, c)
 
-			http.Redirect(w, r, "/questions", http.StatusSeeOther)		}
+			http.Redirect(w, r, "/questions", http.StatusSeeOther)
+		}
 	}
 
 	if r.Method == http.MethodPost {
@@ -775,8 +736,8 @@ func questionsHandler(w http.ResponseWriter, r *http.Request)  {
 		s64 := base64.StdEncoding.EncodeToString(bs)
 
 		c := &http.Cookie{
-			Name:   "questionColumnsVisibility",
-			Value:  s64,
+			Name:  "questionColumnsVisibility",
+			Value: s64,
 		}
 		http.SetCookie(w, c)
 
@@ -885,7 +846,7 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func answersHandler(w http.ResponseWriter, r *http.Request)  {
+func answersHandler(w http.ResponseWriter, r *http.Request) {
 
 	var td models.TplAnswers
 	var a models.Answers
@@ -1002,13 +963,11 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 	td.Question = q
 	td.Level = l
 
-
 	rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByQuestionID), q.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	defer rows.Close()
-
 
 	for rows.Next() {
 		err = scanAnswers(rows, &a)
@@ -1017,7 +976,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request)  {
 		}
 
 		i++
-		td.AnswerRows = append(td.AnswerRows, models.AnswerRow{Number:i, Deleted:a.DeletedAt.Valid, Answer:a})
+		td.AnswerRows = append(td.AnswerRows, models.AnswerRow{Number: i, Deleted: a.DeletedAt.Valid, Answer: a})
 	}
 
 	err = tpl.ExecuteTemplate(w, "answers.gohtml", td)

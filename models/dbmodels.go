@@ -2,7 +2,15 @@ package models
 
 import (
 	"time"
+
 	"github.com/lib/pq"
+)
+
+const (
+	UserTypeAdmin   = "admin"
+	UserTypeTeacher = "teacher"
+	UserTypeStudent = "student"
+	UserTypeParent  = "parent"
 )
 
 //Users is a struct of table users
@@ -14,6 +22,7 @@ type Users struct {
 	LastName  string
 	Type      string
 	Userpic   string
+	DeletedAt pq.NullTime
 }
 
 //Sessions is a struct of table sessions
@@ -77,10 +86,10 @@ type HometaskSpecs struct {
 
 //Teachers is a struct of table teachers
 type Teachers struct {
-	ID      int
-	LevelID int
-	UserID  int
-	Active  bool
+	ID        int
+	LevelID   int
+	UserID    int
+	DeletedAt pq.NullTime
 }
 
 //Students is a struct of table students

@@ -6,34 +6,36 @@
             <div class="row">
                 <div class="col-sm-12 col-md-6 mx-auto">
                     <!-- form card teacher -->
-                    <div class="card rounded-0 shadow {{if .View}}padding-top-75{{end}}">
+                    <div class="card rounded-0 shadow {{if .Edit}}padding-top-75{{end}}">
                         <div class="card-header">
-                            {{if .View}}
+                            {{if .Edit}}
                                 <div class="row justify-content-center">
                                     <img src="public/userpics/{{.User.Userpic}}" class="userpic float-left" alt="user picture">
                                 </div>
                             {{end}}
-                            {{if .View}}
-                                ID={{.Teacher.ID}}
-                            {{else}}
+                            {{if eq .Edit false}}
                                 <h6 class="mb-0">New teacher</h6>
                             {{end}}
                         </div>
                         <div class="card-body">
-                            <form class="form" role="form" method="POST">
+                            {{if .Edit}}
+                                <form action="teacher?do=update&id={{.Teacher.ID}}" class="form" enctype="multipart/form-data" method="post">
+                            {{else}}
+                                <form action="teacher?do=add" class="form" enctype="multipart/form-data" method="post">
+                            {{end}}
                                 <div class="form-group">
                                     <label for="firstName">First name</label>
-                                    <input type="text" class="form-control" id="firstName" required="" placeholder="first name..." name="firstName" {{if .View}}value="{{.User.FirstName}}"{{end}}>
+                                    <input type="text" class="form-control" id="firstName" required="" placeholder="first name..." name="firstName" {{if .Edit}}value="{{.User.FirstName}}"{{end}}>
                                 </div>
                                 <div class="form-group">
                                     <label for="lastName">Last name</label>
-                                    <input type="text" class="form-control" id="lastName" required="" placeholder="last name..." name="lastName" {{if .View}}value="{{.User.LastName}}"{{end}}>
+                                    <input type="text" class="form-control" id="lastName" required="" placeholder="last name..." name="lastName" {{if .Edit}}value="{{.User.LastName}}"{{end}}>
                                 </div>
                                 <div class="form-group">
                                     <label for="email">Email</label>
-                                    <input type="email" class="form-control" id="email" required="" placeholder="email address..." name="email" {{if .View}}value="{{.User.Email}}"{{end}}>
+                                    <input type="email" class="form-control" id="email" required="" placeholder="email address..." name="email" {{if .Edit}}value="{{.User.Email}}"{{end}}>
                                 </div>
-                                {{if .View}}
+                                {{if .Edit}}
                                 {{else}}
                                     <div class="form-group">
                                         <label>Password</label>
@@ -58,9 +60,9 @@
                                     <label for="userpic">User picture</label>
                                     <input type="file" class="form-control-file" id="userpic" name="userpic">
                                 </div>
-                                <button type="submit" class="btn btn-primary btn-lg float-right shadow" id="btnCreate">
-                                    {{if .View}}
-                                        <i class="fa fa-save"></i> Save
+                                <button type="submit" class="btn btn-primary float-right shadow" id="btnCreate">
+                                    {{if .Edit}}
+                                        <i class="fa fa-save"></i> Update
                                     {{else}}
                                         <i class="fa fa-user"></i> Create
                                     {{end}}
@@ -68,6 +70,25 @@
                             </form>
                         </div>
                         <!--/card-block-->
+
+                        {{if .Edit}}
+                            <div class="card-body">
+                                {{if eq .Deleted false}}
+                                    <form action="teacher?do=delete&id={{.Teacher.ID}}" method="post">
+                                        <button type="submit" class="btn btn-danger float-right shadow" id="btnCreate">
+                                            <i class="fa fa-trash-alt"></i> Delete
+                                        </button>
+                                    </form>
+                                {{else}}
+                                    <form action="teacher?do=restore&id={{.Teacher.ID}}" method="post">
+                                        <button type="submit" class="btn btn-success float-right shadow" id="btnCreate">
+                                            <i class="fa fa-undo-alt"></i> Restore
+                                        </button>
+                                    </form>
+                                {{end}}
+                            </div>
+                        {{end}}
+
                     </div>
                     <!-- /form card login -->
                 </div>
