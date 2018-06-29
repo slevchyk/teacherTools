@@ -24,6 +24,8 @@ const (
 	UpdateAnswer              = "UpdateAnswer"
 	UpdateAnswerDeletedAt     = "UpdateAnswerDeletedAt"
 	UpdateTeacherDeletedAt    = "UpdateTeacherDeletedAt"
+	UpdateTeacher             = "UpdateTeacher"
+	UpdateUser                = "UpdateUser"
 	DSessionByID              = "DeleteSessionByID"
 	DSessionByUUID            = "DeleteSessionByUUID"
 )
@@ -276,6 +278,23 @@ func GetQuery(QryID string) string {
 			update teachers
 			set					
 				deleted_at=$2				
+			where
+				id=$1`
+	case UpdateTeacher:
+		result = `
+			update teachers
+			set					
+				level_id=$2				
+			where
+				id=$1`
+	case UpdateUser:
+		result = `
+			update users
+			set					
+				email=$2,
+				first_name=$3,				
+				last_name=$4,
+				userpic=$5				
 			where
 				id=$1`
 	case DSessionByID:

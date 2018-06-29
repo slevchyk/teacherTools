@@ -1,10 +1,11 @@
 package main
 
 import (
-	"./dbase"
-	"./models"
 	"net/http"
 	"time"
+
+	"./dbase"
+	"github.com/slevchyk/teacherTools/models"
 )
 
 func getUser(w http.ResponseWriter, r *http.Request) models.Users {

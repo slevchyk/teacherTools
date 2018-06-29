@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"./dbase"
-	"./models"
+	"./utils"
 	_ "github.com/lib/pq"
 	"github.com/satori/go.uuid"
-	"github.com/slevchyk/teacherTools/utils"
+	"github.com/slevchyk/teacherTools/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -542,6 +542,70 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 
 		http.Redirect(w, r, "/teachers", http.StatusSeeOther)
 
+	case "update":
+
+		t.ID, err = strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		rows, err = db.Query(dbase.GetQuery(dbase.STeacherByID), t.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		defer rows.Close()
+
+		if rows.Next() {
+			err = scanTeacher(rows, &t, &u, &l)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		} else {
+			http.Redirect(w, r, "/teachers", http.StatusSeeOther)
+		}
+
+		levelID, err := strconv.Atoi(r.FormValue("level"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		if levelID != t.LevelID {
+			_, err = db.Query(dbase.GetQuery(dbase.UpdateTeacher), t.ID, levelID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
+		userEmail := r.FormValue("email")
+		userFirstName := r.FormValue("firstName")
+		userLastName := r.FormValue("lastName")
+
+		if userEmail != u.Email || userFirstName != u.FirstName || userLastName != u.LastName {
+			_, err = db.Query(dbase.GetQuery(dbase.UpdateUser), t.UserID, userEmail, userFirstName, userLastName, u.Userpic)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
+		mf, fh, err := r.FormFile("userpic")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		userUserpic, err := utils.UpdateUserpic(mf, fh, u)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		if userUserpic != u.Userpic && userUserpic != "defaultuserpic.png" {
+			_, err = db.Query(dbase.GetQuery(dbase.UpdateUser), t.UserID, u.Email, u.FirstName, u.LastName, userUserpic)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
+		http.Redirect(w, r, "/teachers", http.StatusSeeOther)
+
 	case "delete":
 
 		t.ID, err = strconv.Atoi(r.FormValue("id"))
@@ -601,8 +665,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	td.Rows = sr
 
-	var action string
-	action = r.FormValue("action")
+	action := r.FormValue("action")
 
 	switch action {
 	case "add":

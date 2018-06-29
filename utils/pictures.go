@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"image"
 	"image/draw"
@@ -12,10 +13,44 @@ import (
 	"path/filepath"
 	"strings"
 
-	"errors"
-
 	"github.com/nfnt/resize"
+	"github.com/slevchyk/teacherTools/models"
 )
+
+func CropCenteredSquare(src image.Image) *image.NRGBA {
+
+	var minSideSize int
+
+	//get image bounds
+	srcBounds := src.Bounds()
+	dX := srcBounds.Dx()
+	dY := srcBounds.Dy()
+
+	//let's find min imahe size
+	if dX > dY {
+		minSideSize = dY
+	} else {
+		minSideSize = dX
+	}
+
+	//calculate start crop point
+	x := srcBounds.Min.X + (dX-minSideSize)/2
+	y := srcBounds.Min.Y + (dY-minSideSize)/2
+
+	//start point for croping
+	sp := image.Pt(x, y)
+
+	//make new rectangle
+	r := image.Rect(0, 0, minSideSize, minSideSize)
+
+	//create new image with bounds of r
+	dst := image.NewNRGBA(r)
+
+	//cropping
+	draw.Draw(dst, r, src, sp, draw.Src)
+
+	return dst
+}
 
 func UploadUserpic(mf multipart.File, fh *multipart.FileHeader) (string, error) {
 
@@ -86,37 +121,28 @@ func UploadUserpic(mf multipart.File, fh *multipart.FileHeader) (string, error) 
 	return imgName, nil
 }
 
-func CropCenteredSquare(src image.Image) *image.NRGBA {
+func UpdateUserpic(mf multipart.File, fh *multipart.FileHeader, u models.Users) (string, error) {
 
-	var minSideSize int
-
-	//get image bounds
-	srcBounds := src.Bounds()
-	dX := srcBounds.Dx()
-	dY := srcBounds.Dy()
-
-	//let's find min imahe size
-	if dX > dY {
-		minSideSize = dY
-	} else {
-		minSideSize = dX
+	if fh.Filename == "" {
+		return u.Userpic, nil
 	}
 
-	//calculate start crop point
-	x := srcBounds.Min.X + (dX-minSideSize)/2
-	y := srcBounds.Min.Y + (dY-minSideSize)/2
+	if u.Userpic != "" {
+		slImg := strings.Split(u.Userpic, ".")
+		imgName := slImg[0]
+		imgExt := slImg[1]
 
-	//start point for croping
-	sp := image.Pt(x, y)
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
 
-	//make new rectangle
-	r := image.Rect(0, 0, minSideSize, minSideSize)
+		pathOrigin := filepath.Join(wd, "public", "userpics", imgName+"-origin."+imgExt)
+		path := filepath.Join(wd, "public", "userpics", imgName+"."+imgExt)
 
-	//create new image with bounds of r
-	dst := image.NewNRGBA(r)
+		_ = os.Remove(path)
+		_ = os.Remove(pathOrigin)
+	}
 
-	//cropping
-	draw.Draw(dst, r, src, sp, draw.Src)
-
-	return dst
+	return UploadUserpic(mf, fh)
 }

@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 
-	"./models"
+	"github.com/slevchyk/teacherTools/models"
 )
 
 func scanUser(rows *sql.Rows, u *models.Users) error {
