@@ -80,6 +80,7 @@ func main() {
 	http.HandleFunc("/answers", answersHandler)
 	http.HandleFunc("/admin/db", adminDbHandler)
 	http.HandleFunc("/admin/sessions", adminSessionsHandler)
+	http.HandleFunc("/checkUsername", checkUsername)
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic(err)
@@ -579,6 +580,17 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 		userEmail := r.FormValue("email")
 		userFirstName := r.FormValue("firstName")
 		userLastName := r.FormValue("lastName")
+
+		if userEmail != u.Email {
+			rows, err = db.Query(dbase.GetQuery(dbase.SUserByEmail), userEmail)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+			if rows.Next() {
+				http.Error(w, "this email is already taken", http.StatusInternalServerError)
+			}
+		}
 
 		if userEmail != u.Email || userFirstName != u.FirstName || userLastName != u.LastName {
 			_, err = db.Query(dbase.GetQuery(dbase.UpdateUser), t.UserID, userEmail, userFirstName, userLastName, u.Userpic)

@@ -34,6 +34,12 @@
                                 <div class="form-group">
                                     <label for="email">Email</label>
                                     <input type="email" class="form-control" id="email" required="" placeholder="email address..." name="email" {{if .Edit}}value="{{.User.Email}}"{{end}}>
+                                    <div class="invalid-feedback">
+                                        <p class="form-field-err" id="email-err"></p>
+                                    </div>
+                                    <div class="valid-feedback">
+                                        <p class="form-field-err" id="email-no-err"></p>
+                                    </div>
                                 </div>
                                 {{if .Edit}}
                                 {{else}}
@@ -101,5 +107,40 @@
     <!--/row-->
 </div>
 <!--/container-->
+
+<script>
+    var email = document.querySelector('#email');
+    var emailErr = document.querySelector('#email-err');
+    var emailNoErr = document.querySelector('#email-no-err');
+
+    //    username must be unique
+    email.addEventListener('input', function(){
+        console.log(email.value);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/checkUsername', true);
+        xhr.addEventListener('readystatechange', function(){
+            if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200){
+                var item = xhr.responseText;
+                console.log(item);
+                if (item == 'true') {
+                    email.classList.add("is-valid");
+                    email.classList.remove("is-invalid")
+                    emailErr.textContent = '';
+                    emailNoErr.textContent = 'looks good';
+                    document.querySelector('#btnCreate').disabled = false;
+
+                } else {
+                    email.classList.remove("is-valid")
+                    email.classList.add("is-invalid")
+                    emailErr.textContent = 'User with email ' + email.value + ' already registered!';
+                    emailNoErr.textContent = '';
+                    document.querySelector('#btnCreate').disabled = true;
+                }
+            }
+        });
+        xhr.send(email.value + "|{{.User.Email}}");
+    });
+
+</script>
 
 {{ template "footer"}}
