@@ -54,7 +54,7 @@ type Questions struct {
 	TeacherID int
 }
 
-//AnswerRows is a struct of table answers
+//AnswerRows is a struct of db table answers
 type Answers struct {
 	ID          int
 	Name        string
@@ -64,27 +64,27 @@ type Answers struct {
 	DeletedAt   pq.NullTime
 }
 
-//Hometasks is a struct of table hometasks
-type Hometasks struct {
-	ID            int
-	Score         float32
-	DateStarted   time.Time
-	DateCompleted time.Time
-	LevelID       int
-	StudentID     int
-	TeacherID     int
+//Homeworks is a struct of db table homeworks
+type Homeworks struct {
+	ID          int
+	Score       float32
+	StartedAt   pq.NullTime
+	CompletedAt pq.NullTime
+	LevelID     int
+	StudentID   int
+	TeacherID   int
 }
 
-//HometaskSpecs is a struct of table hometaskSpecs
-type HometaskSpecs struct {
+//HomeworkSpecs is a struct of db table Homework_specs
+type HomeworkSpecs struct {
 	ID         int
 	Answer     int
-	Date       time.Time
-	HometaskID int
+	Date       pq.NullTime
+	HomeworkID int
 	QuestionID int
 }
 
-//Teachers is a struct of table teachers
+//Teachers is a struct of db table teachers
 type Teachers struct {
 	ID        int
 	LevelID   int
@@ -92,14 +92,14 @@ type Teachers struct {
 	DeletedAt pq.NullTime
 }
 
-//Students is a struct of table students
+//Students is a struct of db table students
 type Students struct {
 	ID      int
 	LevelID int
 	UserID  int
 }
 
-//Parents is a struct of table parents
+//Parents is a struct of db table parents
 type Parents struct {
 	ID        int
 	UserID    int

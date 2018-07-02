@@ -164,14 +164,7 @@ func InitDB(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	if !rows.Next() {
 		encryptedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.MinCost)
-		_, err = db.Exec(GetQuery(IUser), "admin@domain.com", encryptedPassword, "Root", "User", models.UserTypeAdmin)
+		_, err = db.Query(GetQuery(InsertUser), "admin@domain.com", encryptedPassword, "Root", "User", models.UserTypeAdmin, nil)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	//td.SysMsg = `Init db completed.
-	//			Created user with admins permissions
-	//			Email: admin
-	//			Password: password`
-
-	//http.Redirect(w, r, "/admin/db", http.StatusSeeOther)
 }

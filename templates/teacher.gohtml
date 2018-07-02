@@ -113,26 +113,39 @@
     var emailErr = document.querySelector('#email-err');
     var emailNoErr = document.querySelector('#email-no-err');
 
-    //    username must be unique
+    // username must be unique and valid format
     email.addEventListener('input', function(){
-        console.log(email.value);
+        // console.log(email.value);
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/checkUsername', true);
+        xhr.open('POST', '/checkEmail', true);
         xhr.addEventListener('readystatechange', function(){
             if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200){
                 var item = xhr.responseText;
-                console.log(item);
+                // console.log(item);
                 if (item == 'true') {
                     email.classList.add("is-valid");
                     email.classList.remove("is-invalid")
                     emailErr.textContent = '';
-                    emailNoErr.textContent = 'looks good';
+                    emailNoErr.textContent = 'Looks good';
                     document.querySelector('#btnCreate').disabled = false;
 
+                } else if (item == 'current') {
+                    email.classList.add("is-valid");
+                    email.classList.remove("is-invalid")
+                    emailErr.textContent = '';
+                    emailNoErr.textContent = 'It`s current email';
+                    document.querySelector('#btnCreate').disabled = false;
+
+                } else if (item == 'false') {
+                    email.classList.remove("is-valid")
+                    email.classList.add("is-invalid")
+                    emailErr.textContent = 'User with this email already exists!';
+                    emailNoErr.textContent = '';
+                    document.querySelector('#btnCreate').disabled = true;
                 } else {
                     email.classList.remove("is-valid")
                     email.classList.add("is-invalid")
-                    emailErr.textContent = 'User with email ' + email.value + ' already registered!';
+                    emailErr.textContent = item;
                     emailNoErr.textContent = '';
                     document.querySelector('#btnCreate').disabled = true;
                 }

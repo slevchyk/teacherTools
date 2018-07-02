@@ -1,5 +1,10 @@
 package models
 
+type NavBar struct {
+	LoggedIn bool
+	User     Users
+}
+
 //LevelRow is a part of TplLevels struct for levels.gohtml
 type LevelRow struct {
 	Number int
@@ -65,7 +70,8 @@ type TeachersRow struct {
 }
 
 type TplTeachers struct {
-	Rows []TeachersRow
+	NavBar NavBar
+	Rows   []TeachersRow
 }
 
 type TplTeacher struct {
@@ -75,4 +81,8 @@ type TplTeacher struct {
 	User    Users
 	Level   Levels
 	Levels  []Levels
+}
+
+type TplIndex struct {
+	NavBar NavBar
 }

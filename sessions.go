@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"./dbase"
+	"github.com/slevchyk/teacherTools/dbase"
 	"github.com/slevchyk/teacherTools/models"
 )
 
@@ -23,7 +23,7 @@ func getUser(w http.ResponseWriter, r *http.Request) models.Users {
 
 	rows, err := db.Query(dbase.GetQuery(dbase.SUserBySessionID), sessionID)
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	defer rows.Close()
 

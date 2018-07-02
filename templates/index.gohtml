@@ -1,14 +1,5 @@
 {{ template "header" }}
 
-{{if .User.FirstName}}
-{{$user := .User}}
-<h2>Hello: {{$user.FirstName}} {{$user.LastName}}</h2>
-<br>
-<h3>Go to <a href="/page">the page</a></h3>
-<h3><a href="/logout">log out</a></h3>
-{{else}}
-<h3><a href="/login">log in</a></h3>
-<h3><a href="/signup">sign up</a></h3>
-{{end}}
+{{ template "navbar" .NavBar}}
 
 {{ template "footer" }}

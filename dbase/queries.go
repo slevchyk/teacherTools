@@ -14,9 +14,9 @@ const (
 	SelectQuestionByID        = "SelectQuestionByID"
 	SelectAnswersByQuestionID = "SelectAnswersByQuestionID"
 	SLevels                   = "SelectLevels"
-	IUser                     = "InsertUser"
-	ISession                  = "InsertSession"
-	ITeacher                  = "InsertTeacher"
+	InsertUser                = "InsertUser"
+	InsertSession             = "InsertSession"
+	InsertTeacher             = "InsertTeacher"
 	ILevel                    = "InsertLevel"
 	InsertAnswer              = "InsertAnswer"
 	ULevel                    = "UpadteLevel"
@@ -45,7 +45,7 @@ func GetQuery(QryID string) string {
 				u.first_name,
 				u.last_name,
 				u.type,
-				u.userpic
+				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
 			from users u
 			where
 				u.email = $1;`
@@ -58,7 +58,7 @@ func GetQuery(QryID string) string {
 				u.first_name,
 				u.last_name,
 				u.type,
-				u.userpic
+				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
 			from users u
 			where
 				u.id = $1;`
@@ -71,7 +71,7 @@ func GetQuery(QryID string) string {
 				u.first_name,
 				u.last_name,
 				u.type,
-				u.userpic
+				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
 			from sessions s
   				left join users u
 					on s.user_id = u.id
@@ -98,7 +98,7 @@ func GetQuery(QryID string) string {
   				u.email,
   				u.first_name,
   				u.last_name,
-  				case when u.userpic is null then 'defaultuserpic.png' else u.userpic end as userpic
+  				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
 			from teachers t
   			left join users u
     			on t.user_id = u.id
@@ -119,7 +119,7 @@ func GetQuery(QryID string) string {
   				u.email,
   				u.first_name,
   				u.last_name,
-  				case when u.userpic is null then 'defaultuserpic.png' else u.userpic end as userpic
+  				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
 			from teachers t
   			left join users u
     			on t.user_id = u.id
@@ -205,7 +205,7 @@ func GetQuery(QryID string) string {
 			from levels l
 			order by
 				l.id;`
-	case IUser:
+	case InsertUser:
 		result = `
 			insert into users
 				(email,
@@ -215,7 +215,7 @@ func GetQuery(QryID string) string {
    				type,
 				userpic)
 			values ($1, $2, $3, $4, $5, $6);`
-	case ISession:
+	case InsertSession:
 		result = `
 			insert into sessions
 				(uuid,
@@ -224,12 +224,13 @@ func GetQuery(QryID string) string {
 				ip,
 				user_agent)
 			values ($1, $2, $3, $4, $5);`
-	case ITeacher:
+	case InsertTeacher:
 		result = `
 			insert into teachers
 				(user_id,
    				level_id)
-			values ($1, $2);`
+			values ($1, $2)
+			returning id;`
 	case InsertAnswer:
 		result = `
 			insert into answers

@@ -116,7 +116,10 @@ func UploadUserpic(mf multipart.File, fh *multipart.FileHeader) (string, error) 
 	}
 	defer newFile.Close()
 
-	jpeg.Encode(newFile, jpegResized, nil)
+	err = jpeg.Encode(newFile, jpegResized, nil)
+	if err != nil {
+		return "", err
+	}
 
 	return imgName, nil
 }
@@ -127,7 +130,8 @@ func UpdateUserpic(mf multipart.File, fh *multipart.FileHeader, u models.Users) 
 		return u.Userpic, nil
 	}
 
-	if u.Userpic != "" {
+	if u.Userpic != "" && u.Userpic != "defaultuserpic.png" {
+		fmt.Println(u.Userpic)
 		slImg := strings.Split(u.Userpic, ".")
 		imgName := slImg[0]
 		imgExt := slImg[1]
