@@ -65,8 +65,9 @@ func main() {
 	http.HandleFunc("/questions", questionsHandler)
 	http.HandleFunc("/question", questionHandler)
 	http.HandleFunc("/answers", answersHandler)
+	http.HandleFunc("/sessions", sessionsHandler)
+	http.HandleFunc("/admin", adminHandler)
 	http.HandleFunc("/admin/db", adminDbHandler)
-	http.HandleFunc("/admin/sessions", adminSessionsHandler)
 	http.HandleFunc("/checkEmail", checkEmail)
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -79,7 +80,13 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	var td models.TplIndex
 
+	var te models.TplError
+
+	te.Error = true
+	te.Message = "internal server error"
+
 	td.NavBar = getNavBar(w, r)
+	td.Error = te
 
 	err := tpl.ExecuteTemplate(w, "index.gohtml", td)
 	if err != nil {
@@ -101,7 +108,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 
 		//check user
-		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), email)
+		rows, err := db.Query(dbase.SelectUserByEmail(), email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -138,11 +145,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 		s.UUID = sessionID.String()
 		s.UserID = u.ID
-		s.LastActivity = time.Now()
+		s.LastActivity = time.Now().UTC()
 		s.IP = r.RemoteAddr
 		s.UserAgent = r.Header.Get("User-Agent")
+		s.StartedAt = s.LastActivity
 
-		_, err = db.Query(dbase.GetQuery(dbase.InsertSession), s.UUID, u.ID, s.LastActivity, s.IP, s.UserAgent)
+		_, err = db.Query(dbase.InsertSession(), s.UUID, u.ID, s.LastActivity, s.IP, s.UserAgent)
 		if err != nil {
 			panic(err)
 		}
@@ -170,7 +178,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionID := c.Value
-	_, err = db.Query(dbase.GetQuery(dbase.DSessionByUUID), sessionID)
+	_, err = db.Query(dbase.DeleteSessionByUUID(), sessionID)
 	if err != nil {
 		panic(err)
 	}
@@ -193,7 +201,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 		u.Email = r.FormValue("email")
 
-		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
+		rows, err := db.Query(dbase.SelectUserByEmail(), u.Email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusForbidden)
 		}
@@ -232,26 +240,13 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		err = db.QueryRow(dbase.GetQuery(dbase.InsertUser), u.Email, u.Password, u.FirstName, u.LastName, u.Type, u.Userpic).Scan(u.ID)
+		err = db.QueryRow(dbase.InsertUser(), u.Email, u.Password, u.FirstName, u.LastName, u.Type, u.Userpic).Scan(u.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		//rows, err = db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
-		//if err != nil {
-		//	http.Error(w, err.Error(), http.StatusInternalServerError)
-		//}
-		//defer rows.Close()
-		//
-		//if rows.Next() {
-		//	err = scanUser(rows, &u)
-		//	if err != nil {
-		//		http.Error(w, err.Error(), http.StatusInternalServerError)
-		//	}
-		//}
-
 		if u.ID != 0 {
-			_, err = db.Query(dbase.GetQuery(dbase.InsertSession), sessionID.String(), u.ID, time.Now(), r.Header.Get("X-Forwarded-For"))
+			_, err = db.Query(dbase.InsertSession(), sessionID.String(), u.ID, time.Now(), r.Header.Get("X-Forwarded-For"))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -284,55 +279,55 @@ func adminDbHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
+func sessionsHandler(w http.ResponseWriter, r *http.Request) {
 
-	var action string
-	action = r.FormValue("action")
+	var td models.TplSessions
 
-	if action == "delete" {
-		var id int
+	code, err := func() (int, error) {
+		do := r.FormValue("do")
+		if do == "delete" {
+			var id int
 
-		id, err := strconv.Atoi(r.FormValue("id"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			id, err := strconv.Atoi(r.FormValue("id"))
+			if err != nil {
+				return http.StatusInternalServerError, err
+			}
+
+			_, err = db.Query(dbase.DeleteSessionByID(), id)
+			if err != nil {
+				return http.StatusInternalServerError, err
+			}
+
+			http.Redirect(w, r, "/sessions", http.StatusSeeOther)
 		}
 
-		_, err = db.Query(dbase.GetQuery(dbase.DSessionByID), id)
+		rows, err := db.Query(dbase.SelectSessions())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			panic(err)
+		}
+		defer rows.Close()
+
+		var s models.Sessions
+		var i int
+
+		for rows.Next() {
+
+			err = rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.IP, &s.UserAgent)
+			if err != nil {
+				return http.StatusInternalServerError, err
+			}
+
+			i++
+			td.Rows = append(td.Rows, models.TplSessionRow{Number: i, Session: s})
 		}
 
-		http.Redirect(w, r, "/admin/sessions", http.StatusSeeOther)
-	}
+		return http.StatusOK, nil
+	}()
 
-	rows, err := db.Query(dbase.GetQuery(dbase.SSessions))
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
+	handleWebError(&td.Error, err, code)
+	td.NavBar = getNavBar(w, r)
 
-	var s models.Sessions
-
-	type row struct {
-		Number  int
-		Session models.Sessions
-	}
-
-	var ts []row
-	var i int
-
-	for rows.Next() {
-
-		err = rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.IP, &s.UserAgent)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		i++
-		ts = append(ts, row{Number: i, Session: s})
-	}
-
-	err = tpl.ExecuteTemplate(w, "sessions.gohtml", ts)
+	err = tpl.ExecuteTemplate(w, "sessions.gohtml", td)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -340,44 +335,46 @@ func adminSessionsHandler(w http.ResponseWriter, r *http.Request) {
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
 
-	type tplData struct {
-		View bool
-		User models.Users
-	}
+	var td models.TplUser
 
-	var action string
-	var td tplData
+	code, err := func() (int, error) {
+		td.View = false
 
-	td.View = false
+		do := r.FormValue("do")
 
-	action = r.FormValue("action")
-	if action == "view" {
+		if do == "view" {
 
-		var u models.Users
+			var u models.Users
 
-		id, err := strconv.Atoi(r.FormValue("id"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		rows, err := db.Query(dbase.GetQuery(dbase.SUserByID), id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		defer rows.Close()
-
-		if rows.Next() {
-			err = scanUser(rows, &u)
+			id, err := strconv.Atoi(r.FormValue("id"))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
+
+			rows, err := db.Query(dbase.SelectUserByID(), id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			defer rows.Close()
+
+			if rows.Next() {
+				err = scanUser(rows, &u)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
+
+			td.View = true
+			td.User = u
 		}
 
-		td.View = true
-		td.User = u
-	}
+		return http.StatusOK, nil
+	}()
 
-	err := tpl.ExecuteTemplate(w, "user.gohtml", td)
+	handleWebError(&td.Error, err, code)
+	td.NavBar = getNavBar(w, r)
+
+	err = tpl.ExecuteTemplate(w, "user.gohtml", td)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -386,28 +383,37 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 func teachersHandler(w http.ResponseWriter, r *http.Request) {
 
 	var td models.TplTeachers
-	var i int
-	var t models.Teachers
-	var u models.Users
-	var l models.Levels
 
-	td.NavBar = getNavBar(w, r)
+	err, code := func() (error, int) {
 
-	rows, err := db.Query(dbase.GetQuery(dbase.STeachers))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	defer rows.Close()
+		var t models.Teachers
+		var u models.Users
+		var l models.Levels
+		var i int
 
-	for rows.Next() {
-		err = scanTeacher(rows, &t, &u, &l)
+		td.NavBar = getNavBar(w, r)
+
+		rows, err := db.Query(dbase.SelectTeachers())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err, http.StatusInternalServerError
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			err = scanTeacher(rows, &t, &u, &l)
+			if err != nil {
+				return err, http.StatusInternalServerError
+			}
+
+			i++
+			td.Rows = append(td.Rows, models.TeachersRow{Number: i, Deleted: t.DeletedAt.Valid, Teacher: t, User: u, Level: l})
 		}
 
-		i++
-		td.Rows = append(td.Rows, models.TeachersRow{Number: i, Deleted: t.DeletedAt.Valid, Teacher: t, User: u, Level: l})
-	}
+		return nil, 200
+	}()
+
+	w.WriteHeader(code)
+	handleWebError(&td.Error, err, code)
 
 	err = tpl.ExecuteTemplate(w, "teachers.gohtml", td)
 	if err != nil {
@@ -425,7 +431,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 
 	td.Edit = false
 
-	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
+	rows, err := db.Query(dbase.SelectLevels())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -448,7 +454,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err = db.Query(dbase.GetQuery(dbase.STeacherByID), t.ID)
+		rows, err = db.Query(dbase.SelectTeacherByID(), t.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -478,7 +484,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 		u.FirstName = r.FormValue("firstName")
 		u.LastName = r.FormValue("lastName")
 
-		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), u.Email)
+		rows, err := db.Query(dbase.SelectUserByEmail(), u.Email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -505,7 +511,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		err = db.QueryRow(dbase.GetQuery(dbase.InsertUser), u.Email, u.Password, u.FirstName, u.LastName, models.UserTypeTeacher, u.Userpic).Scan(u.ID)
+		err = db.QueryRow(dbase.InsertUser(), u.Email, u.Password, u.FirstName, u.LastName, models.UserTypeTeacher, u.Userpic).Scan(u.ID)
 		if err != nil {
 			http.Error(w, "Can't create user", http.StatusInternalServerError)
 		}
@@ -515,7 +521,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			t.UserID = u.ID
 			t.LevelID = l.ID
 
-			err = db.QueryRow(dbase.GetQuery(dbase.InsertTeacher), t.UserID, t.LevelID).Scan(t.ID)
+			err = db.QueryRow(dbase.InsertTeacher(), t.UserID, t.LevelID).Scan(t.ID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -530,7 +536,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err = db.Query(dbase.GetQuery(dbase.STeacherByID), t.ID)
+		rows, err = db.Query(dbase.SelectTeacherByID(), t.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -551,7 +557,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if levelID != t.LevelID {
-			_, err = db.Query(dbase.GetQuery(dbase.UpdateTeacher), t.ID, levelID)
+			_, err = db.Query(dbase.UpdateTeacher(), t.ID, levelID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -562,7 +568,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 		userLastName := r.FormValue("lastName")
 
 		if userEmail != u.Email {
-			rows, err = db.Query(dbase.GetQuery(dbase.SUserByEmail), userEmail)
+			rows, err = db.Query(dbase.SelectUserByEmail(), userEmail)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -573,7 +579,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if userEmail != u.Email || userFirstName != u.FirstName || userLastName != u.LastName {
-			_, err = db.Query(dbase.GetQuery(dbase.UpdateUser), t.UserID, userEmail, userFirstName, userLastName, u.Userpic)
+			_, err = db.Query(dbase.UpdateUser(), t.UserID, userEmail, userFirstName, userLastName, u.Userpic)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -590,7 +596,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if userUserpic != u.Userpic && userUserpic != "defaultuserpic.png" {
-			_, err = db.Query(dbase.GetQuery(dbase.UpdateUser), t.UserID, u.Email, u.FirstName, u.LastName, userUserpic)
+			_, err = db.Query(dbase.UpdateUser(), t.UserID, u.Email, u.FirstName, u.LastName, userUserpic)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -605,7 +611,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		_, err = db.Query(dbase.GetQuery(dbase.UpdateTeacherDeletedAt), t.ID, time.Now().UTC())
+		_, err = db.Query(dbase.UpdateTeacherDeletedAt(), t.ID, time.Now().UTC())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -619,7 +625,7 @@ func teacherHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		_, err = db.Query(dbase.GetQuery(dbase.UpdateTeacherDeletedAt), t.ID, nil)
+		_, err = db.Query(dbase.UpdateTeacherDeletedAt(), t.ID, nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -640,7 +646,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 	var l models.Levels
 	var i int
 
-	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
+	rows, err := db.Query(dbase.SelectLevels())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -668,7 +674,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 
 		l.Name = r.FormValue("name")
 
-		_, err = db.Query(dbase.GetQuery(dbase.ILevel), l.Name, l.Score)
+		_, err = db.Query(dbase.InsertLevel(), l.Name, l.Score)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -698,7 +704,7 @@ func levelsHandler(w http.ResponseWriter, r *http.Request) {
 
 		l.Name = r.FormValue("name")
 
-		_, err := db.Query(dbase.GetQuery(dbase.ULevel), l.ID, l.Name, l.Score)
+		_, err := db.Query(dbase.UpdateLevel(), l.ID, l.Name, l.Score)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -800,7 +806,7 @@ func questionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestions))
+	rows, err := db.Query(dbase.SelectQuestions())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -840,7 +846,7 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 	td.Edit = false
 	td.QuestionTypes = questionTypes
 
-	rows, err := db.Query(dbase.GetQuery(dbase.SLevels))
+	rows, err := db.Query(dbase.SelectLevels())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -862,7 +868,7 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestionByID), id)
+		rows, err := db.Query(dbase.SelectQuestionByID(), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -878,7 +884,7 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 		td.Edit = true
 		td.Question = q
 
-		rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByQuestionID), q.ID)
+		rows, err = db.Query(dbase.SelectAnswersByQuestionID(), q.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -942,7 +948,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 			a.Correct = false
 		}
 
-		_, err := db.Query(dbase.GetQuery(dbase.UpdateAnswer), a.ID, a.Name, a.Correct)
+		_, err := db.Query(dbase.UpdateAnswer(), a.ID, a.Name, a.Correct)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -963,7 +969,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 
 		a.CreatedAt = time.Now().UTC()
 
-		_, err = db.Query(dbase.GetQuery(dbase.InsertAnswer), a.Name, a.Correct, a.CreatedAt, q.ID)
+		_, err = db.Query(dbase.InsertAnswer(), a.Name, a.Correct, a.CreatedAt, q.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -978,7 +984,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		_, err = db.Query(dbase.GetQuery(dbase.UpdateAnswerDeletedAt), a.ID, time.Now().UTC())
+		_, err = db.Query(dbase.UpdateAnswerDeletedAt(), a.ID, time.Now().UTC())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -993,7 +999,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		_, err = db.Query(dbase.GetQuery(dbase.UpdateAnswerDeletedAt), a.ID, nil)
+		_, err = db.Query(dbase.UpdateAnswerDeletedAt(), a.ID, nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -1002,7 +1008,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, url, http.StatusSeeOther)
 	}
 
-	rows, err := db.Query(dbase.GetQuery(dbase.SelectQuestionByID), q.ID)
+	rows, err := db.Query(dbase.SelectQuestionByID(), q.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -1018,7 +1024,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 	td.Question = q
 	td.Level = l
 
-	rows, err = db.Query(dbase.GetQuery(dbase.SelectAnswersByQuestionID), q.ID)
+	rows, err = db.Query(dbase.SelectAnswersByQuestionID(), q.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -1041,12 +1047,60 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getNavBar(w http.ResponseWriter, r *http.Request) models.NavBar {
+func getNavBar(w http.ResponseWriter, r *http.Request) models.TplNavBar {
 
-	var nb models.NavBar
+	var nb models.TplNavBar
 
 	nb.User = getUser(w, r)
 	nb.LoggedIn = nb.User.ID != 0
 
+	switch nb.User.Type {
+	case "admin":
+		nb.MainMenu = append(nb.MainMenu, struct {
+			Link  string
+			Alias string
+		}{"/sessions", "Sessions"})
+
+		nb.MainMenu = append(nb.MainMenu, struct {
+			Link  string
+			Alias string
+		}{"/teachers", "Teachers"})
+
+		nb.MainMenu = append(nb.MainMenu, struct {
+			Link  string
+			Alias string
+		}{"/questions", "Questions"})
+	}
+
 	return nb
+}
+
+func handleWebError(te *models.TplError, err error, code int) {
+
+	if err == nil {
+		te.Error = false
+		return
+	}
+
+	te.Error = true
+	te.Title = strconv.Itoa(code)
+	te.Message = err.Error()
+}
+
+func adminHandler(w http.ResponseWriter, r *http.Request) {
+
+	var td models.TplAdmin
+
+	code, err := func() (int, error) {
+		td.NavBar = getNavBar(w, r)
+
+		return 200, nil
+	}()
+
+	handleWebError(&td.Error, err, code)
+
+	err = tpl.ExecuteTemplate(w, "admin.gohtml", td)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

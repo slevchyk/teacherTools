@@ -33,6 +33,7 @@ type Sessions struct {
 	LastActivity time.Time
 	IP           string
 	UserAgent    string
+	StartedAt    time.Time
 }
 
 //Level is a struct of table levels

@@ -155,7 +155,7 @@ func InitDB(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query(GetQuery(SUserByEmail), "admin")
+	rows, err := db.Query(SelectUserByEmail(), "admin@domain.com")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -164,7 +164,7 @@ func InitDB(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	if !rows.Next() {
 		encryptedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.MinCost)
-		_, err = db.Query(GetQuery(InsertUser), "admin@domain.com", encryptedPassword, "Root", "User", models.UserTypeAdmin, nil)
+		_, err = db.Query(InsertUser(), "admin@domain.com", encryptedPassword, "Root", "User", models.UserTypeAdmin, nil)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

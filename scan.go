@@ -16,7 +16,6 @@ func scanTeacher(rows *sql.Rows, t *models.Teachers, u *models.Users, l *models.
 
 	err := rows.Scan(&t.ID, &t.UserID, &t.LevelID, &t.DeletedAt, &l.Name, &u.Email, &u.FirstName, &u.LastName, &u.Userpic)
 	return err
-
 }
 
 func scanQuestion(rows *sql.Rows, q *models.Questions, l *models.Levels) error {

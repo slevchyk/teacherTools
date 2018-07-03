@@ -34,7 +34,7 @@ func checkEmail(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "current")
 		return
 	} else {
-		rows, err := db.Query(dbase.GetQuery(dbase.SUserByEmail), xs[0])
+		rows, err := db.Query(dbase.SelectUserByEmail(), xs[0])
 		if err != nil {
 			fmt.Fprint(w, "Internal server error. Can't check email")
 			return

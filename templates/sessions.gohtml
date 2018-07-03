@@ -1,5 +1,8 @@
 {{ template "header"}}
 
+{{ template "navbar" .NavBar}}
+{{ template "error" .Error}}
+
 <div class="container">
     <div class="row">
         <table class="table table-striped">
@@ -16,15 +19,15 @@
             </thead>
 
              {{if .}}
-                {{range .}}
+                {{range .Rows}}
                     <tr>
                         <td>{{.Number}}</td>
                         <td>{{.Session.UUID}}</td>
-                        <td><a href="/user?action=view&id={{.Session.UserID}}" class="btn btn-link">{{.Session.UserID}}</a></td>
+                        <td><a href="/user?do=view&id={{.Session.UserID}}" class="btn btn-link">{{.Session.UserID}}</a></td>
                         <td>{{.Session.LastActivity}}</td>
                         <td>{{.Session.IP}}</td>
                         <td>{{.Session.UserAgent}}</td>
-                        <td><a href="/admin/sessions?action=delete&id={{.Session.ID}}" class="btn btn-info">Delete</a></td>
+                        <td><a href="/sessions?do=delete&id={{.Session.ID}}" class="btn btn-info">Delete</a></td>
                     </tr>
                 {{end}}
             {{end}}

@@ -1,95 +1,7 @@
 package dbase
 
-//Query names for function GetQuery
-const (
-	SUserBySessionID          = "SelectUserBySessionID"
-	SUserByEmail              = "SelectUserByEmail"
-	SUserByID                 = "SelectUserByID"
-	SSessions                 = "SelectSessions"
-	STeachers                 = "SelectTeachers"
-	STeacherByID              = "SelectTeacherByID"
-	STeacherByUserID          = "SelectTeacherByUserID"
-	SStudentsByTeacher        = "SelectStudentsByTeacher"
-	SelectQuestions           = "SelectQuestions"
-	SelectQuestionByID        = "SelectQuestionByID"
-	SelectAnswersByQuestionID = "SelectAnswersByQuestionID"
-	SLevels                   = "SelectLevels"
-	InsertUser                = "InsertUser"
-	InsertSession             = "InsertSession"
-	InsertTeacher             = "InsertTeacher"
-	ILevel                    = "InsertLevel"
-	InsertAnswer              = "InsertAnswer"
-	ULevel                    = "UpadteLevel"
-	USessionsLastActivity     = "UpdateSessionsLastActivity"
-	UpdateAnswer              = "UpdateAnswer"
-	UpdateAnswerDeletedAt     = "UpdateAnswerDeletedAt"
-	UpdateTeacherDeletedAt    = "UpdateTeacherDeletedAt"
-	UpdateTeacher             = "UpdateTeacher"
-	UpdateUser                = "UpdateUser"
-	DSessionByID              = "DeleteSessionByID"
-	DSessionByUUID            = "DeleteSessionByUUID"
-)
-
-//GetQuery function return query text by query name (u can use const from this pkg)
-func GetQuery(QryID string) string {
-
-	var result string
-
-	switch QryID {
-	case SUserByEmail:
-		result = `
-			select
-				u.id,
-				u.email,
-				u.password,
-				u.first_name,
-				u.last_name,
-				u.type,
-				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
-			from users u
-			where
-				u.email = $1;`
-	case SUserByID:
-		result = `
-			select
-				u.id,
-				u.email,
-				u.password,
-				u.first_name,
-				u.last_name,
-				u.type,
-				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
-			from users u
-			where
-				u.id = $1;`
-	case SUserBySessionID:
-		result = `
-			select 
-  				u.id,
-				u.email,
-				u.password,
-				u.first_name,
-				u.last_name,
-				u.type,
-				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
-			from sessions s
-  				left join users u
-					on s.user_id = u.id
-			where
-				s.uuid = $1;`
-	case SSessions:
-		result = `
-			select
-				s.id,
-				s.uuid,
-				s.user_id,
-				s.last_activity,
-				s.ip,
-				s.user_agent
-			from sessions s;`
-	case STeachers:
-		result = `
-			select
+func SelectTeachers() string {
+	return `select
   				t.id,
 				t.user_id,
 				t.level_id,
@@ -108,9 +20,10 @@ func GetQuery(QryID string) string {
 				t.deleted_at desc,
 				u.first_name,
 				u.last_name;`
-	case STeacherByID:
-		result = `
-			select
+}
+
+func SelectTeacherByID() string {
+	return `select
   				t.id,
 				t.user_id,
 				t.level_id,
@@ -127,27 +40,85 @@ func GetQuery(QryID string) string {
     			on t.level_id = l.id
 			where
 				t.id = $1;`
-	case STeacherByUserID:
-		result = `
-			select
+}
+
+func SelectUserByEmail() string {
+	return `select
+				u.id,
+				u.email,
+				u.password,
+				u.first_name,
+				u.last_name,
+				u.type,
+				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
+			from users u
+			where
+				u.email = $1;`
+}
+
+func SelectUserByID() string {
+	return `select
+				u.id,
+				u.email,
+				u.password,
+				u.first_name,
+				u.last_name,
+				u.type,
+				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
+			from users u
+			where
+				u.id = $1;`
+}
+
+func SelectUserBySessionID() string {
+	return `select 
+  				u.id,
+				u.email,
+				u.password,
+				u.first_name,
+				u.last_name,
+				u.type,
+				case when u.userpic is null or u.userpic = '' then 'defaultuserpic.png' else u.userpic end as userpic
+			from sessions s
+  				left join users u
+					on s.user_id = u.id
+			where
+				s.uuid = $1;`
+}
+
+func SelectSessions() string {
+	return `select
+				s.id,
+				s.uuid,
+				s.user_id,
+				s.last_activity,
+				s.ip,
+				s.user_agent
+			from sessions s;`
+}
+
+func SelectTeacherByUserID() string {
+	return `select
 				t.id,
 				t.level_id
 			from teachers t
 			where
 				t.user_id = $1;`
-	case SStudentsByTeacher:
-		result = `
-			select
+}
+
+func SelectStudentsByTeacher() string {
+	return `select
 				s.id,
 				s.user_id,
 				s.level_id
 			from students s
 			where
 				s.teacherid = $1;`
-	case SelectQuestions:
-		result = `
-			select
-  				q.id,
+}
+
+func SelectQuestions() string {
+	return `select
+				q.id,
   				q.name,
   				q.type,
   				q.score,
@@ -161,9 +132,10 @@ func GetQuery(QryID string) string {
   				l.score,
   				q.type,
 				q.created_at;`
-	case SelectQuestionByID:
-		result = `
-			select
+}
+
+func SelectQuestionByID() string {
+	return `select
   				q.id,
   				q.name,
   				q.type,
@@ -180,9 +152,10 @@ func GetQuery(QryID string) string {
   				l.score,
   				q.type,
 				q.created_at;`
-	case SelectAnswersByQuestionID:
-		result = `
-			select
+}
+
+func SelectAnswersByQuestionID() string {
+	return `select
   				a.id,
   				a.name,
  				a.correct,
@@ -195,19 +168,21 @@ func GetQuery(QryID string) string {
 			order by
 				a.deleted_at desc,
 				a.correct desc,
-				a.name`
-	case SLevels:
-		result = `
-			select
+				a.name;`
+}
+
+func SelectLevels() string {
+	return `select
 				l.id,
 				l.name,
 				l.score
 			from levels l
 			order by
 				l.id;`
-	case InsertUser:
-		result = `
-			insert into users
+}
+
+func InsertUser() string {
+	return `insert into users
 				(email,
    				password,
    				first_name,
@@ -215,102 +190,115 @@ func GetQuery(QryID string) string {
    				type,
 				userpic)
 			values ($1, $2, $3, $4, $5, $6);`
-	case InsertSession:
-		result = `
-			insert into sessions
+}
+
+func InsertSession() string {
+	return `insert into sessions
 				(uuid,
    				user_id,
    				last_activity,
 				ip,
 				user_agent)
 			values ($1, $2, $3, $4, $5);`
-	case InsertTeacher:
-		result = `
-			insert into teachers
+}
+
+func InsertTeacher() string {
+	return `insert into teachers
 				(user_id,
    				level_id)
 			values ($1, $2)
 			returning id;`
-	case InsertAnswer:
-		result = `
-			insert into answers
+}
+
+func InsertAnswer() string {
+	return `insert into answers
 				(name,
    				correct,
 				created_at,
 				question_id)
 			values ($1, $2, $3, $4);`
-	case ILevel:
-		result = `
-			insert into levels
+}
+
+func InsertLevel() string {
+	return `insert into levels
 				(name,
 				score)
 			values ($1, $2)`
-	case USessionsLastActivity:
-		result = `
-			update sessions
+}
 
-			with`
-	case ULevel:
-		result = `
-			update levels
+func UpdateSessionLastActivityByUuid() string {
+	return `update sessions
+			set
+				last_activity = $2
+			where
+
+				uuid=$1;`
+}
+
+func UpdateLevel() string {
+	return `update levels
 			set
 				name=$2,
 				score=$3
 			where
-				id=$1`
-	case UpdateAnswer:
-		result = `
-			update answers
+				id=$1;`
+}
+
+func UpdateAnswer() string {
+	return `update answers
 			set				
 				name=$2,
 				correct=$3
 			where
-				id=$1`
-	case UpdateAnswerDeletedAt:
-		result = `
-			update answers
+				id=$1;`
+}
+
+func UpdateAnswerDeletedAt() string {
+	return `update answers
 			set		
 				correct=false,
 				deleted_at=$2				
 			where
-				id=$1`
-	case UpdateTeacherDeletedAt:
-		result = `
-			update teachers
+				id=$1;`
+}
+
+func UpdateTeacherDeletedAt() string {
+	return `update teachers
 			set					
 				deleted_at=$2				
 			where
-				id=$1`
-	case UpdateTeacher:
-		result = `
-			update teachers
+				id=$1;`
+}
+
+func UpdateTeacher() string {
+	return `update teachers
 			set					
 				level_id=$2				
 			where
-				id=$1`
-	case UpdateUser:
-		result = `
-			update users
+				id=$1;`
+}
+
+func UpdateUser() string {
+	return `update users
 			set					
 				email=$2,
 				first_name=$3,				
 				last_name=$4,
 				userpic=$5				
 			where
-				id=$1`
-	case DSessionByID:
-		result = `
-			delete				
+				id=$1;`
+}
+
+func DeleteSessionByID() string {
+	return `delete				
 			from sessions s
 			where
 				s.id = $1;`
-	case DSessionByUUID:
-		result = `
-			delete				
+}
+
+func DeleteSessionByUUID() string {
+	return `delete				
 			from sessions s
 			where
 				s.uuid = $1;`
-	}
-
-	return result
 }

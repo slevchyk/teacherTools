@@ -1,18 +1,6 @@
 {{ template "header"}}
 
-    <a href="/admin/db?action=init">Init DB</a><br>
-
-    {{if .Err}}
-        <br>
-        {{range .Err}}
-            <b>Action:</b> {{.Name}} -  <b>Err:</b> {{.Value}}<br>
-        {{end}}
-    {{end}}
-
-    {{if .SysMsg}}
-        <br>
-        <b>{{.SysMsg}}</b>
-        <br>
-    {{end}}
+{{ template "navbar" .NavBar}}
+{{ template "error" .Error}}
 
 {{ template "footer" }}

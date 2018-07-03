@@ -1,8 +1,18 @@
 package models
 
-type NavBar struct {
+type TplNavBar struct {
 	LoggedIn bool
 	User     Users
+	MainMenu []struct {
+		Link  string
+		Alias string
+	}
+}
+
+type TplError struct {
+	Error   bool
+	Title   string
+	Message string
 }
 
 //LevelRow is a part of TplLevels struct for levels.gohtml
@@ -70,11 +80,14 @@ type TeachersRow struct {
 }
 
 type TplTeachers struct {
-	NavBar NavBar
+	NavBar TplNavBar
+	Error  TplError
 	Rows   []TeachersRow
 }
 
 type TplTeacher struct {
+	NavBar  TplNavBar
+	Error   TplError
 	Edit    bool
 	Deleted bool
 	Teacher Teachers
@@ -84,5 +97,29 @@ type TplTeacher struct {
 }
 
 type TplIndex struct {
-	NavBar NavBar
+	NavBar TplNavBar
+	Error  TplError
+}
+
+type TplAdmin struct {
+	NavBar TplNavBar
+	Error  TplError
+}
+
+type TplSessionRow struct {
+	Number  int
+	Session Sessions
+}
+
+type TplSessions struct {
+	NavBar TplNavBar
+	Error  TplError
+	Rows   []TplSessionRow
+}
+
+type TplUser struct {
+	NavBar TplNavBar
+	Error  TplError
+	View   bool
+	User   Users
 }
