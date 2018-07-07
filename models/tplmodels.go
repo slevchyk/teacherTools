@@ -1,5 +1,9 @@
 package models
 
+import (
+	"time"
+)
+
 type TplNavBar struct {
 	LoggedIn bool
 	User     Users
@@ -13,6 +17,17 @@ type TplError struct {
 	Error   bool
 	Title   string
 	Message string
+}
+
+type TplLogs struct {
+	ID        int
+	Date      time.Time
+	IsError   bool
+	SysMsg    string
+	Msg       string
+	IP        string
+	UserAgent string
+	UserID    int
 }
 
 //LevelRow is a part of TplLevels struct for levels.gohtml

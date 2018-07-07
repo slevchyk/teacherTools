@@ -155,6 +155,22 @@ func InitDB(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS logs (
+				id serial PRIMARY KEY,
+				date timestamp with time zone,
+				is_error boolean,
+				sys_msg text,
+				msg text,				
+				ip text,
+				user_agent text,
+				user_id int references users(id))`)
+
+	if err != nil {
+		msg = fmt.Sprintln("creating logs table\n", err.Error())
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
 	rows, err := db.Query(SelectUserByEmail(), "admin@domain.com")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -32,7 +32,7 @@ const sessionLenght = 300
 func init() {
 	var err error
 
-	db, err = sql.Open("postgres", "postgres://postgres:sql@localhost/coach?sslmode=disable")
+	db, err = sql.Open("postgres", "postgres://gocoach:g0sqlpaSs@localhost/coach?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
@@ -44,6 +44,7 @@ func init() {
 
 	tpl = template.Must(template.ParseGlob("templates/*.gohtml"))
 
+	//go cleanSession()
 	lastSessionCleaned = time.Now()
 }
 
@@ -312,7 +313,7 @@ func sessionsHandler(w http.ResponseWriter, r *http.Request) {
 
 		for rows.Next() {
 
-			err = rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.IP, &s.UserAgent)
+			err = scanSession(rows, &s)
 			if err != nil {
 				return http.StatusInternalServerError, err
 			}
@@ -324,7 +325,8 @@ func sessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return http.StatusOK, nil
 	}()
 
-	handleWebError(&td.Error, err, code)
+	w.WriteHeader(code)
+	handleWebError(r, &td.Error, err, code)
 	td.NavBar = getNavBar(w, r)
 
 	err = tpl.ExecuteTemplate(w, "sessions.gohtml", td)
@@ -371,7 +373,8 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		return http.StatusOK, nil
 	}()
 
-	handleWebError(&td.Error, err, code)
+	w.WriteHeader(code)
+	handleWebError(r, &td.Error, err, code)
 	td.NavBar = getNavBar(w, r)
 
 	err = tpl.ExecuteTemplate(w, "user.gohtml", td)
@@ -413,7 +416,7 @@ func teachersHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	w.WriteHeader(code)
-	handleWebError(&td.Error, err, code)
+	handleWebError(r, &td.Error, err, code)
 
 	err = tpl.ExecuteTemplate(w, "teachers.gohtml", td)
 	if err != nil {
@@ -890,7 +893,7 @@ func questionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for rows.Next() {
-			err = scanAnswers(rows, &a)
+			err = scanAnswer(rows, &a)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -1031,7 +1034,7 @@ func answersHandler(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = scanAnswers(rows, &a)
+		err = scanAnswer(rows, &a)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -1075,7 +1078,7 @@ func getNavBar(w http.ResponseWriter, r *http.Request) models.TplNavBar {
 	return nb
 }
 
-func handleWebError(te *models.TplError, err error, code int) {
+func handleWebError(r *http.Request, te *models.TplError, err error, code int) {
 
 	if err == nil {
 		te.Error = false
@@ -1083,8 +1086,36 @@ func handleWebError(te *models.TplError, err error, code int) {
 	}
 
 	te.Error = true
-	te.Title = strconv.Itoa(code)
+	//te.Title = w.Header().Get()
 	te.Message = err.Error()
+
+	RecordError(err.Error(), "", r)
+}
+
+func RecordError(sysMsg string, msg string, r *http.Request) {
+
+	var re models.TplLogs
+	var s models.Sessions
+
+	re.Date = time.Now().UTC()
+	re.IsError = true
+	re.SysMsg = sysMsg
+	re.Msg = msg
+
+	c, err := r.Cookie("session")
+	if err == nil {
+		sessionID := c.Value
+
+		rows, err := db.Query(dbase.SelectSessionsByUUID(), sessionID)
+		if err == nil {
+			if rows.Next() {
+				err = scanSession(rows, &s)
+			}
+		}
+		defer rows.Close()
+	}
+
+	_ = db.QueryRow(dbase.InsertLog(), re.Date, re.IsError, re.SysMsg, re.Msg, s.IP, s.UserAgent, s.UserID)
 }
 
 func adminHandler(w http.ResponseWriter, r *http.Request) {
@@ -1097,7 +1128,8 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		return 200, nil
 	}()
 
-	handleWebError(&td.Error, err, code)
+	w.WriteHeader(code)
+	handleWebError(r, &td.Error, err, code)
 
 	err = tpl.ExecuteTemplate(w, "admin.gohtml", td)
 	if err != nil {

@@ -24,8 +24,14 @@ func scanQuestion(rows *sql.Rows, q *models.Questions, l *models.Levels) error {
 	return err
 }
 
-func scanAnswers(rows *sql.Rows, a *models.Answers) error {
+func scanAnswer(rows *sql.Rows, a *models.Answers) error {
 
 	err := rows.Scan(&a.ID, &a.Name, &a.Correct, &a.CreatedAt, &a.QuestionsID, &a.DeletedAt)
+	return err
+}
+
+func scanSession(rows *sql.Rows, s *models.Sessions) error {
+
+	err := rows.Scan(&s.ID, &s.UUID, &s.UserID, &s.LastActivity, &s.ID, &s.UserAgent, &s.StartedAt)
 	return err
 }

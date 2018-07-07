@@ -93,8 +93,23 @@ func SelectSessions() string {
 				s.user_id,
 				s.last_activity,
 				s.ip,
-				s.user_agent
+				s.user_agent,
+				s.started_at
 			from sessions s;`
+}
+
+func SelectSessionsByUUID() string {
+	return `select
+				s.id,
+				s.uuid,
+				s.user_id,
+				s.last_activity,
+				s.ip,
+				s.user_agent,
+				s.started_at
+			from sessions s
+			where
+				s.uuid = $1;`
 }
 
 func SelectTeacherByUserID() string {
@@ -226,6 +241,17 @@ func InsertLevel() string {
 			values ($1, $2)`
 }
 
+func InsertLog() string {
+	return `insert into logs
+				(date,
+				is_error,
+				sys_msg,				
+				msg,				
+				ip,
+				user_agent,
+				user_id)
+			values ($1, $2, $3, $4, $5, $6, $7)`
+}
 func UpdateSessionLastActivityByUuid() string {
 	return `update sessions
 			set
